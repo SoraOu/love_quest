@@ -1,0 +1,2769 @@
+=== style.css ===
+/* =========================================================
+   LOVE QUEST — style.css
+   ONE stylesheet. No phase-numbered additions files, ever.
+   Sections:
+     1. Design Tokens (:root)
+     2. Base Reset & Global Styles
+     3. Scene System
+     4. Pixel Border Utilities
+     5. Dialogue Box Component (single reusable component)
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   1. DESIGN TOKENS
+   "Deep ocean meets warm twilight" — carried over from the
+   old build since the palette worked. This is a design call,
+   not "her text," so it's fine to ship as real values now.
+   Change these six colors and the whole game re-skins itself.
+   --------------------------------------------------------- */
+:root {
+  /* --- Color palette --- */
+  --color-ocean-deep:   #0b1d3a;   /* primary background */
+  --color-ocean-mid:    #14335c;   /* panel / secondary background */
+  --color-twilight:     #6a4c93;   /* accent — purple dusk */
+  --color-twilight-warm:#ff8c69;   /* accent — warm coral/gold light */
+  --color-foam:         #eaf4ff;   /* primary text on dark */
+  --color-gold:         #ffd166;   /* highlight / gold border variant */
+  --color-pink:         #ff6f9c;   /* highlight / pink border variant */
+
+  /* Semantic aliases — reference these in components, not raw colors,
+     so a future palette swap only touches this block. */
+  --color-bg:           var(--color-ocean-deep);
+  --color-panel:        var(--color-ocean-mid);
+  --color-text:         var(--color-foam);
+  --color-text-dim:     #9fb3d1;
+  --color-accent:       var(--color-twilight-warm);
+  --color-accent-2:     var(--color-twilight);
+
+  /* HP bar states (used by battle.js later, defined now so nothing
+     hardcodes a color later) */
+  --color-hp-high: #6ee7a0;
+  --color-hp-mid:  #ffd166;
+  --color-hp-low:  #ff5d5d;
+
+  /* --- Pixel unit scale ---
+     Everything sizes off a single base unit so raising/lowering
+     "chunkiness" of the pixel art is a one-line change. */
+  --px: 4px;
+  --px-1: calc(var(--px) * 1);
+  --px-2: calc(var(--px) * 2);
+  --px-3: calc(var(--px) * 3);
+  --px-4: calc(var(--px) * 4);
+  --px-6: calc(var(--px) * 6);
+  --px-8: calc(var(--px) * 8);
+
+  /* --- Typography ---
+     clamp() so type scales between mobile and desktop without
+     a separate breakpoint pass (5.4 still does a full QA check). */
+  --font-display: 'Press Start 2P', 'VT323', monospace;
+  --font-body: 'VT323', 'Press Start 2P', monospace;
+
+  --fs-xs:   clamp(0.6rem, 0.55rem + 0.2vw, 0.75rem);
+  --fs-sm:   clamp(0.75rem, 0.7rem + 0.25vw, 0.9rem);
+  --fs-md:   clamp(0.95rem, 0.85rem + 0.4vw, 1.15rem);
+  --fs-lg:   clamp(1.2rem, 1rem + 0.8vw, 1.75rem);
+  --fs-xl:   clamp(1.6rem, 1.3rem + 1.4vw, 2.5rem);
+
+  /* --- Z-index layers ---
+     Named layers so scene modules never guess a magic number. */
+  --z-bg: 0;
+  --z-scene: 10;
+  --z-hud: 20;
+  --z-dialogue: 30;
+  --z-overlay: 40;
+  --z-transition: 50;
+
+  /* --- Transitions --- */
+  --t-fast: 120ms;
+  --t-med: 240ms;
+  --t-slow: 480ms;
+  --ease-pixel: steps(6, end);
+  --ease-smooth: ease-in-out;
+}
+
+/* ---------------------------------------------------------
+   2. BASE RESET & GLOBAL STYLES
+   --------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* the game is a fixed viewport, not a scroll page */
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: optimizeLegibility;
+}
+
+img, canvas, .sprite {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.sprite {
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: contain;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--px-1) solid var(--color-gold);
+  outline-offset: var(--px-1);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---------------------------------------------------------
+   3. SCENE SYSTEM
+   Every screen in the game is a `.scene` that sceneManager.js
+   toggles via `.active` / `.fade-out`. No scene module should
+   invent its own show/hide mechanism.
+   --------------------------------------------------------- */
+#game-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity var(--t-med) var(--ease-smooth);
+}
+
+.scene.active {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.scene.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------
+   4. PIXEL BORDER UTILITIES
+   Same double-shadow technique from the old build, defined
+   once. Apply `.pixel-border` plus an optional color modifier.
+   --------------------------------------------------------- */
+.pixel-border {
+  position: relative;
+  border: var(--px-1) solid var(--color-foam);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-foam);
+  image-rendering: pixelated;
+}
+
+.pixel-border-gold {
+  border-color: var(--color-gold);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-gold);
+}
+
+.pixel-border-pink {
+  border-color: var(--color-pink);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-pink);
+}
+
+/* ---------------------------------------------------------
+   5. DIALOGUE BOX — single reusable component
+   Every scene (intro, chapter, battle) reuses this same
+   markup via dialogueEngine.js. No per-scene duplicate boxes.
+
+   Expected markup (built by JS, shown here for reference):
+
+   <div class="dialogue-box pixel-border">
+     <div class="dialogue-speaker"></div>
+     <div class="dialogue-text">
+       <span class="dialogue-text-content"></span><span class="dialogue-cursor"></span>
+     </div>
+     <button class="dialogue-continue" aria-label="Continue"></button>
+     <div class="dialogue-choices"></div>
+   </div>
+   --------------------------------------------------------- */
+.dialogue-box.hidden {
+  display: none;
+}
+
+.dialogue-box {
+  position: absolute;
+  left: 50%;
+  bottom: var(--px-6);
+  transform: translateX(-50%);
+  width: min(92vw, 720px);
+  min-height: calc(var(--px-8) * 5);
+  background-color: var(--color-panel); /* fallback while dialogue-box.png is still a placeholder */
+  background-image: url('assets/dialogue-box.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding: var(--px-4) var(--px-6);
+  z-index: var(--z-dialogue);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-2);
+}
+
+.dialogue-speaker {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  color: var(--color-accent);
+  letter-spacing: 0.05em;
+  min-height: 1em; /* reserves space even when empty */
+}
+
+.dialogue-text {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  min-height: 3em;
+}
+
+.dialogue-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  background: var(--color-text);
+  vertical-align: text-bottom;
+  animation: dialogue-blink 800ms steps(1) infinite;
+}
+
+@keyframes dialogue-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.dialogue-continue {
+  align-self: flex-end;
+  width: 0;
+  height: 0;
+  border-left: var(--px-2) solid transparent;
+  border-right: var(--px-2) solid transparent;
+  border-top: var(--px-2) solid var(--color-accent);
+  animation: dialogue-bounce 900ms ease-in-out infinite;
+  opacity: 0; /* dialogueEngine.js toggles this visible once a line finishes typing */
+}
+
+.dialogue-continue.visible {
+  opacity: 1;
+}
+
+@keyframes dialogue-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(var(--px-1)); }
+}
+
+.dialogue-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-1);
+}
+
+.dialogue-choices:empty {
+  display: none;
+}
+
+.dialogue-choice-btn {
+  text-align: left;
+  padding: var(--px-1) var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-text);
+  transition: background var(--t-fast) var(--ease-smooth);
+}
+
+.dialogue-choice-btn:hover,
+.dialogue-choice-btn:focus-visible {
+  background: var(--color-accent-2);
+}
+
+@media (max-width: 480px) {
+  .dialogue-box {
+    width: 94vw;
+    padding: var(--px-3) var(--px-4);
+    bottom: var(--px-4);
+  }
+}
+
+/* ---------------------------------------------------------
+   6. BOOT / NAME REVEAL / INTRO  (Chapter 2)
+   --------------------------------------------------------- */
+
+/* --- 6.1 Boot screen --- */
+.starfield {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-ocean-deep);
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 20%, var(--color-foam) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 80% 10%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 30% 70%, var(--color-gold) 100%, transparent),
+    radial-gradient(1px 1px at 60% 40%, var(--color-foam) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 90% 60%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 45% 85%, var(--color-twilight-warm) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 20% 50%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 70% 90%, var(--color-foam) 100%, transparent);
+  background-repeat: repeat;
+  background-size: 220px 220px;
+  animation: starfield-twinkle 3.5s ease-in-out infinite alternate;
+}
+
+@keyframes starfield-twinkle {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+.boot-title {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  color: var(--color-foam);
+  text-shadow: var(--px-1) var(--px-1) 0 var(--color-twilight);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transform: translateY(var(--px-4));
+  transition: opacity var(--t-slow) var(--ease-smooth), transform var(--t-slow) var(--ease-smooth);
+}
+
+.boot-title.boot-title-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.boot-subtitle {
+  position: relative;
+  z-index: var(--z-scene);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  margin-top: var(--px-2);
+  min-height: 1.2em;
+}
+
+.press-start {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  color: var(--color-gold);
+  margin-top: var(--px-8);
+  opacity: 0;
+  animation: press-start-blink 900ms steps(1) infinite;
+}
+
+.press-start.press-start-visible {
+  opacity: 1;
+}
+
+@keyframes press-start-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+
+.press-start:not(.press-start-visible) {
+  animation: none;
+  opacity: 0;
+}
+
+.boot-version {
+  position: absolute;
+  z-index: var(--z-scene);
+  bottom: var(--px-2);
+  right: var(--px-2);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+
+/* --- 6.2 Name reveal --- */
+.name-reveal-text {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--color-accent);
+  letter-spacing: 0.08em;
+  min-height: 1.4em;
+}
+
+/* --- 6.4 Intro scene --- */
+.intro-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 30vh;
+}
+
+/* Real sprite image is set inline via Assets.setBg() in boot.js —
+   this class only handles size, transform, and the walk-in animation. */
+.sprite-mudkip {
+  width: calc(var(--px-8) * 4);
+  height: calc(var(--px-8) * 4);
+  transform: translateX(-140%);
+  opacity: 0;
+}
+
+.sprite-mudkip.sprite-walk-in {
+  animation: sprite-walk-in 600ms var(--ease-pixel) forwards;
+}
+
+@keyframes sprite-walk-in {
+  0% { transform: translateX(-140%); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* ---------------------------------------------------------
+   7. WORLD MAP & HUD  (Chapter 3.1, 3.2)
+   --------------------------------------------------------- */
+.map-bg {
+  position: absolute;
+  inset: var(--px-6);
+  z-index: var(--z-bg);
+  background: linear-gradient(160deg, var(--color-ocean-mid), var(--color-ocean-deep));
+}
+
+.map-locations {
+  position: relative;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--px-4);
+  justify-content: center;
+  align-content: center;
+  max-width: min(90vw, 700px);
+}
+
+.map-location {
+  padding: var(--px-2) var(--px-4);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  transition: transform var(--t-fast) var(--ease-smooth), background var(--t-fast) var(--ease-smooth);
+}
+
+.map-location:not(:disabled):hover,
+.map-location:not(:disabled):focus-visible {
+  background: var(--color-accent-2);
+  transform: translateY(calc(var(--px-1) * -1));
+}
+
+.map-location.locked {
+  border-color: var(--color-text-dim);
+  color: var(--color-text-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.hud {
+  position: absolute;
+  top: var(--px-2);
+  left: var(--px-2);
+  right: var(--px-2);
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--px-3);
+  padding: var(--px-2) var(--px-3);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hud.hidden {
+  display: none;
+}
+
+.hud-party {
+  display: flex;
+  align-items: center;
+  gap: var(--px-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.hud-party-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-foam);
+  white-space: nowrap;
+}
+
+.hud-party-level {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.hud-xp-bar {
+  flex: 1;
+  max-width: 160px;
+  height: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hud-xp-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--color-gold);
+  transition: width var(--t-med) var(--ease-smooth);
+}
+
+.hud-items {
+  display: flex;
+  gap: var(--px-1);
+}
+
+.hud-item-slot {
+  width: var(--px-6);
+  height: var(--px-6);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-text-dim);
+}
+
+.hud-item-slot.unlocked {
+  background: var(--color-gold);
+  border-color: var(--color-foam);
+}
+
+/* ---------------------------------------------------------
+   8. CHAPTER / MEMORY SCREEN  (Chapter 3.3)
+   --------------------------------------------------------- */
+.chapter-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background: linear-gradient(200deg, var(--color-ocean-mid), var(--color-ocean-deep) 70%);
+}
+
+.chapter-header {
+  position: absolute;
+  top: var(--px-6);
+  left: 0;
+  right: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-1);
+  text-align: center;
+}
+
+.chapter-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-gold);
+  letter-spacing: 0.1em;
+}
+
+.chapter-title {
+  font-size: var(--fs-lg);
+  color: var(--color-foam);
+  min-height: 1.2em;
+}
+
+.chapter-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--px-8);
+  padding-bottom: 32vh;
+}
+
+/* No specific "player" (Lara) sprite asset yet — stays a placeholder
+   box until one exists. Sized to match the trainer art's proportions
+   so it doesn't look out of place standing next to a real NPC sprite. */
+.sprite-player {
+  width: calc(var(--px-8) * 3);
+  height: calc(var(--px-8) * 5.5);
+  background: var(--color-twilight-warm);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+/* Real trainer image is set inline via Assets.setBg() in chapter.js —
+   this class only handles size, transform, and the walk-in animation. */
+.sprite-npc {
+  width: calc(var(--px-8) * 3);
+  height: calc(var(--px-8) * 5.5);
+  transform: translateX(140%);
+  opacity: 0;
+}
+
+.sprite-npc.sprite-walk-in {
+  animation: sprite-walk-in-reverse 600ms var(--ease-pixel) forwards;
+}
+
+@keyframes sprite-walk-in-reverse {
+  0% { transform: translateX(140%); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.memory-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-overlay);
+  width: min(88vw, 640px);
+  max-height: 70vh;
+  background: var(--color-panel);
+  padding: var(--px-4) var(--px-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-2);
+}
+
+.memory-box.hidden {
+  display: none;
+}
+
+.memory-chapter-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-pink);
+  letter-spacing: 0.1em;
+}
+
+.memory-title {
+  font-size: var(--fs-md);
+  color: var(--color-foam);
+}
+
+.memory-text {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 4em;
+  line-height: 1.5;
+  color: var(--color-text);
+  padding-right: var(--px-1);
+}
+
+.memory-continue {
+  align-self: flex-end;
+  padding: var(--px-1) var(--px-3);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-pink);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+}
+
+.memory-continue:hover,
+.memory-continue:focus-visible {
+  background: var(--color-pink);
+  color: var(--color-ocean-deep);
+}
+
+/* ---------------------------------------------------------
+   9. ITEM-GET OVERLAY  (Chapter 3.6)
+   --------------------------------------------------------- */
+.item-get-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 29, 58, 0.85); /* var(--color-ocean-deep) at partial opacity */
+}
+
+.item-get-overlay.hidden {
+  display: none;
+}
+
+.item-get-panel {
+  background: var(--color-panel);
+  padding: var(--px-6) var(--px-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-2);
+  text-align: center;
+  max-width: min(80vw, 420px);
+}
+
+.item-get-emoji {
+  font-size: var(--fs-xl);
+  color: var(--color-gold);
+}
+
+.item-get-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-foam);
+  min-height: 1.2em;
+}
+
+.item-get-desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  min-height: 1.4em;
+}
+
+.item-get-continue {
+  margin-top: var(--px-2);
+  padding: var(--px-1) var(--px-4);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+}
+
+.item-get-continue:hover,
+.item-get-continue:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-ocean-deep);
+}
+
+/* ---------------------------------------------------------
+   10. BATTLE SYSTEM  (Chapter 3.4)
+   --------------------------------------------------------- */
+.battle-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  display: flex;
+  flex-direction: column;
+}
+
+.battle-sky {
+  flex: 3;
+  background: linear-gradient(180deg, var(--color-twilight), var(--color-ocean-mid));
+}
+
+.battle-ground {
+  flex: 1;
+  background: var(--color-ocean-deep);
+}
+
+.battle-panel {
+  position: absolute;
+  z-index: var(--z-hud);
+  width: min(46vw, 260px);
+  background: var(--color-panel);
+  padding: var(--px-2) var(--px-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-1);
+}
+
+.battle-panel-enemy {
+  top: 12%;
+  left: var(--px-4);
+}
+
+.battle-panel-player {
+  bottom: 26%;
+  right: var(--px-4);
+}
+
+.battle-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-foam);
+}
+
+.battle-level {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+
+.hp-bar {
+  height: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hp-fill {
+  height: 100%;
+  width: 100%;
+  transition: width var(--t-med) var(--ease-smooth), background var(--t-fast) var(--ease-smooth);
+}
+
+.hp-fill.hp-high { background: var(--color-hp-high); }
+.hp-fill.hp-mid  { background: var(--color-hp-mid); }
+.hp-fill.hp-low  { background: var(--color-hp-low); }
+
+.battle-sprite-enemy,
+.battle-sprite-player {
+  position: relative;
+  z-index: var(--z-scene);
+  width: calc(var(--px-8) * 3);
+  height: calc(var(--px-8) * 3);
+}
+
+.battle-sprite-enemy {
+  position: absolute;
+  top: 28%;
+  right: 15%;
+}
+
+.battle-sprite-player {
+  position: absolute;
+  bottom: 20%;
+  left: 10%;
+}
+
+.sprite-hit {
+  animation: sprite-hit-flash 400ms steps(4);
+}
+
+@keyframes sprite-hit-flash {
+  0%, 100% { filter: none; }
+  25%, 75% { filter: brightness(2) saturate(0); }
+}
+
+.damage-pop {
+  position: absolute;
+  top: -1.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-pink);
+  animation: damage-pop-float 700ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes damage-pop-float {
+  0% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -1.5em); }
+}
+
+.battle-log {
+  position: absolute;
+  z-index: var(--z-hud);
+  bottom: calc(var(--px-8) * 4);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  min-height: 1.4em;
+  text-align: center;
+}
+
+.battle-menu,
+.battle-submenu {
+  position: absolute;
+  bottom: var(--px-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-dialogue);
+  width: min(92vw, 420px);
+  background: var(--color-panel);
+  padding: var(--px-2);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--px-1);
+}
+
+.battle-menu.hidden,
+.battle-submenu.hidden {
+  display: none;
+}
+
+.battle-menu-btn {
+  padding: var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.battle-menu-btn:hover,
+.battle-menu-btn:focus-visible {
+  background: var(--color-accent-2);
+}
+
+.battle-submenu {
+  grid-template-columns: 1fr;
+}
+
+.battle-submenu-row,
+.battle-submenu-empty {
+  padding: var(--px-1) var(--px-2);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+
+.battle-submenu-back {
+  padding: var(--px-1) var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-gold);
+  font-size: var(--fs-xs);
+  justify-self: end;
+}
+
+/* ---------------------------------------------------------
+   11. EVOLUTION SEQUENCE  (Chapter 3.5)
+   --------------------------------------------------------- */
+.evolution-flash {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-transition);
+  background: var(--color-foam);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms linear;
+}
+
+.evolution-flash.evolution-flash-active {
+  opacity: 1;
+}
+
+.evolution-sprite {
+  width: calc(var(--px-8) * 5);
+  height: calc(var(--px-8) * 5);
+  background: var(--color-twilight);
+  border: var(--px-2) solid var(--color-gold);
+  box-shadow: 0 0 var(--px-6) var(--color-gold);
+}
+
+.evolution-sprite.evolution-sprite-reveal {
+  animation: evolution-reveal 500ms var(--ease-smooth);
+}
+
+@keyframes evolution-reveal {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.evolution-text {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-gold);
+  text-align: center;
+  min-height: 1.4em;
+  width: min(90vw, 500px);
+}
+
+/* ---------------------------------------------------------
+   12. PIXEL SPRITES — enemies/trainers & party stages  (Chapter 3.7)
+   Real sprite art now lives under assets/sprites/ (see
+   assets/README.md). These classes only handle SIZE — the
+   actual image is set inline via Assets.setBg() in JS, since
+   the file path depends on data (dex number / trainer name),
+   not on a fixed CSS rule.
+   --------------------------------------------------------- */
+.evolution-sprite {
+  width: calc(var(--px-8) * 5);
+  height: calc(var(--px-8) * 5);
+}
+
+/* Kept for the eventual Mega Swampert reveal (Ch. 4.5) — a glow the
+   plain sprite classes don't get, since that moment should feel bigger. */
+.evolution-sprite.evolution-sprite-mega {
+  filter: drop-shadow(0 0 var(--px-4) var(--color-gold));
+}
+
+.battle-sprite-enemy,
+.battle-sprite-player {
+  animation: sprite-idle-float 1700ms ease-in-out infinite;
+}
+
+@keyframes sprite-idle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--px-1) * -1.5)); }
+}
+
+
+=== assets.js ===
+/* =========================================================
+   LOVE QUEST — assets.js
+   Resolves real sprite/image file paths from StoryData.assets
+   so every other module can say "give me Mudkip's front sprite"
+   without knowing (or caring) about folder layout or file
+   extensions. If the folder layout ever changes, this is the
+   only file that needs to change.
+   ========================================================= */
+
+const Assets = (function () {
+  'use strict';
+
+  const cfg = StoryData.assets;
+
+  function pokemonFront(dex, ext) {
+    return `${cfg.pokemonFrontDir}/${dex}.${ext || 'gif'}`;
+  }
+
+  function pokemonBack(dex, ext) {
+    return `${cfg.pokemonBackDir}/${dex}.${ext || 'gif'}`;
+  }
+
+  function trainer(name) {
+    return `${cfg.trainerDir}/${name}.png`;
+  }
+
+  function dialogueBox() {
+    return cfg.dialogueBoxImg;
+  }
+
+  function megaSwampertSheet() {
+    return cfg.megaSwampertSheet;
+  }
+
+  /** Front sprite for a given party evolution stage ('mudkip' | 'marshtomp' | 'swampert' | 'mega-swampert'). */
+  function partyFront(stage) {
+    const info = cfg.partyStageSprites[stage];
+    if (!info) return null;
+    return info.sheet ? megaSwampertSheet() : pokemonFront(info.dex, info.ext);
+  }
+
+  /** Back sprite (used for the player's own Pokémon in battle). Returns null for stages with no back sprite (mega). */
+  function partyBack(stage) {
+    const info = cfg.partyStageSprites[stage];
+    if (!info || info.sheet) return null;
+    return pokemonBack(info.dex, info.ext);
+  }
+
+  /** Sets (or clears, if url is falsy) an element's background-image. */
+  function setBg(el, url) {
+    if (!el) return;
+    el.style.backgroundImage = url ? `url('${url}')` : 'none';
+  }
+
+  return { pokemonFront, pokemonBack, trainer, dialogueBox, megaSwampertSheet, partyFront, partyBack, setBg };
+})();
+window.Assets = Assets;
+
+=== audio.js ===
+/* =========================================================
+   LOVE QUEST — audio.js  (Chapter 2.6)
+   Skeleton only — no real tracks exist yet (5.1/5.2 source
+   them, 5.3 wires up Howler.js). Every scene can already
+   call GameAudio.play('sceneName') today; it just no-ops
+   quietly until a track is registered for that id.
+
+   Named `GameAudio` (not `Audio`) so it doesn't shadow the
+   browser's built-in window.Audio constructor, which this
+   file uses internally.
+
+   Mute state is in-memory only for the whole session — no
+   localStorage, per project rules (see 5.3).
+   ========================================================= */
+
+const GameAudio = (function () {
+  'use strict';
+
+  /** @type {Record<string, { src: string, loop: boolean, volume: number }>} */
+  const tracks = {};
+  let currentTrackId = null;
+  let currentEl = null;
+  let muted = false;
+
+  /**
+   * Registers a track for a scene id. Call this once per scene,
+   * whenever real audio files exist (5.2) — safe to call before then too.
+   * @param {string} sceneId
+   * @param {string} src
+   * @param {{ loop?: boolean, volume?: number }} [opts]
+   */
+  function registerTrack(sceneId, src, opts) {
+    opts = opts || {};
+    tracks[sceneId] = {
+      src,
+      loop: opts.loop !== false,
+      volume: typeof opts.volume === 'number' ? opts.volume : 0.6,
+    };
+  }
+
+  /**
+   * Switches the currently playing track to whatever is registered
+   * for `sceneId`. Silently does nothing if no track is registered
+   * yet — scenes are free to call this before assets exist.
+   * @param {string} sceneId
+   */
+  function play(sceneId) {
+    stop();
+    currentTrackId = sceneId;
+
+    const track = tracks[sceneId];
+    if (!track) {
+      console.info(`[GameAudio] no track registered for "${sceneId}" yet — playing silently.`);
+      return;
+    }
+
+    const el = new window.Audio(track.src);
+    el.loop = track.loop;
+    el.volume = muted ? 0 : track.volume;
+    el.play().catch((err) => {
+      // Common causes at this stage: file doesn't exist yet, or the
+      // browser blocked autoplay before the first user gesture.
+      console.info(`[GameAudio] couldn't play "${sceneId}":`, err.message);
+    });
+    currentEl = el;
+  }
+
+  function stop() {
+    if (currentEl) {
+      currentEl.pause();
+      currentEl = null;
+    }
+    currentTrackId = null;
+  }
+
+  function toggleMute() {
+    setMute(!muted);
+    return muted;
+  }
+
+  /** @param {boolean} value */
+  function setMute(value) {
+    muted = value;
+    if (currentEl && currentTrackId && tracks[currentTrackId]) {
+      currentEl.volume = muted ? 0 : tracks[currentTrackId].volume;
+    }
+  }
+
+  function isMuted() {
+    return muted;
+  }
+
+  return { registerTrack, play, stop, toggleMute, setMute, isMuted };
+})();
+
+window.GameAudio = GameAudio;
+
+=== battle.js ===
+/* =========================================================
+   LOVE QUEST — battle.js  (Chapter 3.4)
+   FIGHT/ITEM/POKÉMON/RUN menu, HP bars with color states,
+   damage pop-ups. This is a love letter, not a punishing
+   RPG — the player can't actually lose; a "defeat" just
+   shrugs it off and continues, same tone as the rest of it.
+   ========================================================= */
+
+const Battle = (function () {
+  'use strict';
+
+  let enemyNameEl, enemyLevelEl, enemyHpFillEl, enemySpriteEl;
+  let playerNameEl, playerLevelEl, playerHpFillEl, playerSpriteEl;
+  let menuEl, submenuEl, logEl;
+
+  let enemyHp, enemyMaxHp, playerHp, playerMaxHp;
+  let enemyData, chapterData;
+  let busy = false;
+
+  function mount() {
+    enemyNameEl = document.querySelector('#battle .battle-panel-enemy .battle-name');
+    enemyLevelEl = document.querySelector('#battle .battle-panel-enemy .battle-level');
+    enemyHpFillEl = document.querySelector('#battle .battle-panel-enemy .hp-fill');
+    enemySpriteEl = document.querySelector('#battle .battle-sprite-enemy');
+
+    playerNameEl = document.querySelector('#battle .battle-panel-player .battle-name');
+    playerLevelEl = document.querySelector('#battle .battle-panel-player .battle-level');
+    playerHpFillEl = document.querySelector('#battle .battle-panel-player .hp-fill');
+    playerSpriteEl = document.querySelector('#battle .battle-sprite-player');
+
+    menuEl = document.querySelector('#battle .battle-menu');
+    submenuEl = document.querySelector('#battle .battle-submenu');
+    logEl = document.querySelector('#battle .battle-log');
+
+    menuEl.querySelectorAll('.battle-menu-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        onMenuClick(btn.dataset.action);
+      });
+    });
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  /** @param {HTMLElement} fillEl @param {number} hp @param {number} maxHp */
+  function setHpBar(fillEl, hp, maxHp) {
+    const pct = Math.max(0, Math.round((hp / maxHp) * 100));
+    fillEl.style.width = `${pct}%`;
+    fillEl.classList.remove('hp-high', 'hp-mid', 'hp-low');
+    fillEl.classList.add(pct > 50 ? 'hp-high' : pct > 20 ? 'hp-mid' : 'hp-low');
+  }
+
+  function log(text) {
+    logEl.textContent = text;
+  }
+
+  function showDamagePop(targetSpriteEl, amount) {
+    const pop = document.createElement('div');
+    pop.className = 'damage-pop';
+    pop.textContent = `-${amount}`;
+    targetSpriteEl.appendChild(pop);
+    window.setTimeout(() => pop.remove(), 700);
+  }
+
+  /** Called by Chapter once the memory beat finishes. */
+  function startFor(chapter) {
+    chapterData = chapter;
+    const enemies = StoryData.battle.enemies;
+    enemyData = enemies.length
+      ? enemies[(chapter.id - 1) % enemies.length]
+      : { id: 'enemy', name: '', introLine: '' };
+    SceneManager.go('battle');
+  }
+
+  function resetBattleState() {
+    enemyMaxHp = 30 + chapterData.id * 5;
+    enemyHp = enemyMaxHp;
+    playerMaxHp = 40 + GameState.state.partyLevel * 2;
+    playerHp = playerMaxHp;
+    busy = false;
+  }
+
+  function renderPanels() {
+    enemyNameEl.textContent = enemyData.name;
+    enemyLevelEl.textContent = `Lv.${chapterData.id * 3 + 2}`;
+    setHpBar(enemyHpFillEl, enemyHp, enemyMaxHp);
+    enemySpriteEl.className = 'sprite battle-sprite-enemy';
+    Assets.setBg(enemySpriteEl, Assets.pokemonFront(enemyData.dex, enemyData.ext));
+
+    playerNameEl.textContent = GameState.partyLabel();
+    playerLevelEl.textContent = `Lv.${GameState.state.partyLevel}`;
+    setHpBar(playerHpFillEl, playerHp, playerMaxHp);
+    playerSpriteEl.className = 'sprite battle-sprite-player';
+    // Battle convention: the player's own Pokémon shows its BACK sprite.
+    Assets.setBg(playerSpriteEl, Assets.partyBack(GameState.state.partyStage));
+  }
+
+  function showMainMenu() {
+    submenuEl.classList.add('hidden');
+    submenuEl.innerHTML = '';
+    menuEl.classList.remove('hidden');
+  }
+
+  async function playerAttack() {
+    if (busy) return;
+    busy = true;
+    menuEl.classList.add('hidden');
+
+    const dmg = 6 + Math.floor(Math.random() * 5);
+    enemyHp = Math.max(0, enemyHp - dmg);
+    enemySpriteEl.classList.add('sprite-hit');
+    showDamagePop(enemySpriteEl, dmg);
+    setHpBar(enemyHpFillEl, enemyHp, enemyMaxHp);
+    log(`${GameState.partyLabel()} attacks!`);
+    await wait(500);
+    enemySpriteEl.classList.remove('sprite-hit');
+
+    if (enemyHp <= 0) {
+      await onVictory();
+      return;
+    }
+
+    const edmg = 4 + Math.floor(Math.random() * 4);
+    playerHp = Math.max(0, playerHp - edmg);
+    playerSpriteEl.classList.add('sprite-hit');
+    showDamagePop(playerSpriteEl, edmg);
+    setHpBar(playerHpFillEl, playerHp, playerMaxHp);
+    log(`${enemyData.name} strikes back!`);
+    await wait(500);
+    playerSpriteEl.classList.remove('sprite-hit');
+
+    if (playerHp <= 0) {
+      playerHp = playerMaxHp; // no real losing condition — see file header
+      setHpBar(playerHpFillEl, playerHp, playerMaxHp);
+      log(`${GameState.partyLabel()} shakes it off and keeps going.`);
+      await wait(500);
+    }
+
+    busy = false;
+    showMainMenu();
+  }
+
+  async function onVictory() {
+    log(StoryData.battle.victoryLine || `${enemyData.name} was defeated!`);
+    await wait(900);
+
+    const evolvesThisChapter = chapterData.id === 2 || chapterData.id === 4;
+    if (evolvesThisChapter) {
+      Evolution.startFor(chapterData.id, () => Chapter.onBattleWon());
+    } else {
+      Chapter.onBattleWon();
+    }
+  }
+
+  function showItemSubmenu() {
+    submenuEl.innerHTML = '';
+    submenuEl.classList.remove('hidden');
+    menuEl.classList.add('hidden');
+
+    const items = StoryData.chapters
+      .map((c, i) => ({ name: c.itemName, unlocked: GameState.state.itemsUnlocked[i] }))
+      .filter((it) => it.unlocked && it.name);
+
+    if (!items.length) {
+      const empty = document.createElement('div');
+      empty.className = 'battle-submenu-empty';
+      empty.textContent = 'Nothing to use yet.';
+      submenuEl.appendChild(empty);
+    } else {
+      items.forEach((it) => {
+        const row = document.createElement('div');
+        row.className = 'battle-submenu-row';
+        row.textContent = it.name;
+        submenuEl.appendChild(row);
+      });
+    }
+
+    const backBtn = document.createElement('button');
+    backBtn.type = 'button';
+    backBtn.className = 'battle-submenu-back';
+    backBtn.textContent = 'BACK';
+    backBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showMainMenu();
+    });
+    submenuEl.appendChild(backBtn);
+  }
+
+  function onMenuClick(action) {
+    if (busy) return;
+    if (action === 'fight') {
+      playerAttack();
+      return;
+    }
+    if (action === 'item') {
+      showItemSubmenu();
+      return;
+    }
+    if (action === 'run') {
+      log("Can't run from a memory.");
+      return;
+    }
+    log('Not available yet.'); // 'pokemon' submenu — nothing to swap to in a one-party story
+  }
+
+  function init() {
+    mount();
+    SceneManager.register('battle', {
+      onEnter() {
+        GameAudio.play('battle');
+        resetBattleState();
+        renderPanels();
+        log(enemyData.introLine || `${enemyData.name} wants to battle!`);
+        showMainMenu();
+      },
+    });
+  }
+
+  return { init, startFor };
+})();
+window.Battle = Battle;
+
+=== boot.js ===
+/* =========================================================
+   LOVE QUEST — boot.js
+   Owns the whole opening sequence: boot screen (2.1) ->
+   name reveal (2.2) -> intro dialogue (2.4). These three
+   scenes are one continuous flow with no game-state of their
+   own to track elsewhere, so they share this one file rather
+   than getting three separate modules.
+
+   Chapter 3's map.js takes over once the intro dialogue ends.
+   ========================================================= */
+
+const Boot = (function () {
+  'use strict';
+
+  const BOOT_ANIM_MS = 1400; // keep in rough sync with the CSS fade-in duration
+
+  let bootState = 'idle'; // 'animating' | 'ready'
+  let bootAnimTimer = null;
+
+  let titleEl, subtitleEl, pressStartEl, versionEl;
+  let nameRevealEl;
+  let mudkipEl;
+
+  function queryElements() {
+    titleEl = document.querySelector('#boot .boot-title');
+    subtitleEl = document.querySelector('#boot .boot-subtitle');
+    pressStartEl = document.querySelector('#boot .press-start');
+    versionEl = document.querySelector('#boot .boot-version');
+    nameRevealEl = document.querySelector('#name-reveal .name-reveal-text');
+    mudkipEl = document.querySelector('#intro .sprite-mudkip');
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  // --- Scene: boot -----------------------------------------------------
+  function registerBootScene() {
+    SceneManager.register('boot', {
+      onEnter() {
+        bootState = 'animating';
+        subtitleEl.textContent = StoryData.boot.subtitle;
+        versionEl.textContent = StoryData.boot.version;
+        pressStartEl.textContent = 'PRESS START';
+
+        titleEl.classList.remove('boot-title-visible');
+        pressStartEl.classList.remove('press-start-visible');
+
+        // force reflow so the animation restarts if we ever re-enter this scene
+        void titleEl.offsetWidth;
+        titleEl.classList.add('boot-title-visible');
+
+        GameAudio.play('boot');
+
+        bootAnimTimer = window.setTimeout(() => {
+          bootState = 'ready';
+          pressStartEl.classList.add('press-start-visible');
+        }, BOOT_ANIM_MS);
+      },
+      onLeave() {
+        window.clearTimeout(bootAnimTimer);
+      },
+      onInput(action) {
+        if (action !== 'advance') return;
+
+        if (bootState === 'animating') {
+          // First press: skip straight to the "ready" state instead of advancing.
+          window.clearTimeout(bootAnimTimer);
+          titleEl.classList.add('boot-title-visible');
+          pressStartEl.classList.add('press-start-visible');
+          bootState = 'ready';
+          return;
+        }
+
+        if (bootState === 'ready') {
+          // Second press: actually advance.
+          SceneManager.go('name-reveal');
+        }
+      },
+    });
+  }
+
+  // --- Scene: name-reveal ------------------------------------------------
+  function registerNameRevealScene() {
+    SceneManager.register('name-reveal', {
+      async onEnter() {
+        nameRevealEl.textContent = '';
+        GameAudio.play('name-reveal');
+        await DialogueEngine.typeInto(nameRevealEl, StoryData.intro.nameRevealText);
+        await Input.waitForAdvance();
+        SceneManager.go('intro');
+      },
+    });
+  }
+
+  // --- Scene: intro --------------------------------------------------
+  function registerIntroScene() {
+    SceneManager.register('intro', {
+      async onEnter() {
+        GameAudio.play('intro');
+
+        // Mudkip walks on: retrigger the CSS animation each time we enter.
+        Assets.setBg(mudkipEl, Assets.partyFront('mudkip'));
+        mudkipEl.classList.remove('sprite-walk-in');
+        void mudkipEl.offsetWidth;
+        mudkipEl.classList.add('sprite-walk-in');
+        await wait(600);
+
+        const lines = StoryData.intro.openingLines && StoryData.intro.openingLines.length
+          ? StoryData.intro.openingLines
+          : [StoryData.intro.openingLine];
+
+        await DialogueEngine.run({
+          speaker: 'MUDKIP',
+          lines,
+        });
+
+        // Chapter 3 wires this hand-off to the world map (map.js).
+        console.info('[boot] intro sequence complete — waiting on Chapter 3 (map.js) for the hand-off.');
+      },
+    });
+  }
+
+  function init() {
+    queryElements();
+    registerBootScene();
+    registerNameRevealScene();
+    registerIntroScene();
+  }
+
+  return { init };
+})();
+
+window.Boot = Boot;
+
+=== chapter.js ===
+/* =========================================================
+   LOVE QUEST — chapter.js  (Chapter 3.3, 3.6)
+   Owns the chapter/memory screen and the item-get overlay
+   that caps off each chapter. Hands off to Battle after the
+   memory beat, and gets called back once that battle (and
+   any evolution) resolves.
+   ========================================================= */
+
+const Chapter = (function () {
+  'use strict';
+
+  let npcSpriteEl, labelEl, titleEl;
+  let memoryBoxEl, memoryLabelEl, memoryTitleEl, memoryTextEl, memoryContinueBtn;
+  let itemOverlayEl, itemEmojiEl, itemNameEl, itemDescEl, itemContinueBtn;
+
+  /** The StoryData.chapters[] entry currently in play. */
+  let currentChapterData = null;
+
+  function mount() {
+    npcSpriteEl = document.querySelector('#chapter .sprite-npc');
+    labelEl = document.querySelector('#chapter .chapter-label');
+    titleEl = document.querySelector('#chapter .chapter-title');
+
+    memoryBoxEl = document.querySelector('.memory-box');
+    memoryLabelEl = memoryBoxEl.querySelector('.memory-chapter-label');
+    memoryTitleEl = memoryBoxEl.querySelector('.memory-title');
+    memoryTextEl = memoryBoxEl.querySelector('.memory-text');
+    memoryContinueBtn = memoryBoxEl.querySelector('.memory-continue');
+
+    itemOverlayEl = document.querySelector('.item-get-overlay');
+    itemEmojiEl = itemOverlayEl.querySelector('.item-get-emoji');
+    itemNameEl = itemOverlayEl.querySelector('.item-get-name');
+    itemDescEl = itemOverlayEl.querySelector('.item-get-desc');
+    itemContinueBtn = itemOverlayEl.querySelector('.item-get-continue');
+  }
+
+  function findChapterByLocation(locationId) {
+    return StoryData.chapters.find((c) => c.locationId === locationId) || null;
+  }
+
+  /** Called by Map when the player clicks an unlocked location. */
+  function travelTo(locationId) {
+    const data = findChapterByLocation(locationId);
+    if (!data) {
+      console.error(`[Chapter] no chapter data found for location "${locationId}".`);
+      return;
+    }
+    currentChapterData = data;
+    SceneManager.go('chapter');
+  }
+
+  /** The scrollable memory box — a variant of the dialogue box, but its own component since it stays open rather than typing/advancing line by line. */
+  function showMemory() {
+    return new Promise((resolve) => {
+      memoryLabelEl.textContent = `CHAPTER ${currentChapterData.id}`;
+      memoryTitleEl.textContent = currentChapterData.title;
+      memoryTextEl.textContent = currentChapterData.memoryText;
+      memoryBoxEl.classList.remove('hidden');
+
+      function onContinue(e) {
+        e.stopPropagation();
+        memoryBoxEl.classList.add('hidden');
+        memoryContinueBtn.removeEventListener('click', onContinue);
+        resolve();
+      }
+      memoryContinueBtn.addEventListener('click', onContinue);
+    });
+  }
+
+  /** Single reusable item-get overlay — lives once outside every scene, like the dialogue box. */
+  function showItemGet() {
+    return new Promise((resolve) => {
+      itemEmojiEl.textContent = '\u2726'; // placeholder glyph until a real icon exists (Ch. 5.1)
+      itemNameEl.textContent = currentChapterData.itemName;
+      itemDescEl.textContent = currentChapterData.itemDesc;
+      itemOverlayEl.classList.remove('hidden');
+
+      function onContinue(e) {
+        e.stopPropagation();
+        itemOverlayEl.classList.add('hidden');
+        itemContinueBtn.removeEventListener('click', onContinue);
+        resolve();
+      }
+      itemContinueBtn.addEventListener('click', onContinue);
+    });
+  }
+
+  function init() {
+    mount();
+    SceneManager.register('chapter', {
+      async onEnter() {
+        if (!currentChapterData) {
+          console.error('[Chapter] entered with no chapter data — call Chapter.travelTo(locationId) instead of SceneManager.go("chapter") directly.');
+          return;
+        }
+        GameAudio.play('chapter');
+        labelEl.textContent = `CHAPTER ${currentChapterData.id}`;
+        titleEl.textContent = currentChapterData.title;
+
+        npcSpriteEl.classList.remove('sprite-walk-in');
+        Assets.setBg(npcSpriteEl, Assets.trainer(currentChapterData.npcSprite));
+        void npcSpriteEl.offsetWidth; // restart the animation each visit
+        npcSpriteEl.classList.add('sprite-walk-in');
+
+        await DialogueEngine.run({
+          speaker: currentChapterData.npc,
+          lines: currentChapterData.dialogue,
+        });
+
+        await showMemory();
+
+        Battle.startFor(currentChapterData);
+      },
+    });
+  }
+
+  /** Called by battle.js (directly, or via evolution.js) once the chapter's battle is fully resolved. */
+  function onBattleWon() {
+    showItemGet().then(() => {
+      const itemSlotIndex = currentChapterData.id - 1;
+      GameState.completeChapter(currentChapterData.id, itemSlotIndex);
+
+      const locationIds = StoryData.map.locations.map((l) => l.id);
+      const currentIdx = locationIds.indexOf(currentChapterData.locationId);
+      const nextLocationId = locationIds[currentIdx + 1];
+      if (nextLocationId) GameState.unlockLocation(nextLocationId);
+
+      HUD.update();
+      SceneManager.go('map');
+    });
+  }
+
+  return { init, travelTo, onBattleWon, current: () => currentChapterData };
+})();
+window.Chapter = Chapter;
+
+=== dialogueEngine.js ===
+/* =========================================================
+   LOVE QUEST — dialogueEngine.js  (Chapter 2.3, typewriter
+   utility referenced by 2.2)
+
+   Two things live here:
+
+   1. `typeInto(el, text, opts)` — a generic typewriter utility.
+      Types text into ANY element, character by character, with
+      the same feel everywhere it's used: chapter titles, quiz
+      feedback, name reveal, etc. Not a one-off.
+
+   2. `DialogueEngine` — drives the SINGLE `.dialogue-box`
+      element that lives once in index.html (outside every
+      `.scene`). Every scene that needs dialogue calls
+      DialogueEngine.run(...); nothing copy-pastes dialogue
+      box markup into its own scene.
+
+   Both read timing from one constant so the "typing speed"
+   feel is tuned in exactly one place.
+   ========================================================= */
+
+const CHAR_MS = 28; // ms per character — shared by typeInto and DialogueEngine
+
+/**
+ * Types `text` into `el` one character at a time. Pressing
+ * advance mid-type skips straight to the full string.
+ * @param {HTMLElement} el
+ * @param {string} text
+ * @param {{ speed?: number }} [opts]
+ * @returns {Promise<void>}
+ */
+function typeInto(el, text, opts) {
+  const speed = (opts && opts.speed) || CHAR_MS;
+  return new Promise((resolve) => {
+    let i = 0;
+    let typing = true;
+    let timer = null;
+
+    function finish() {
+      typing = false;
+      window.clearTimeout(timer);
+      el.textContent = text;
+      Input.clearAdvanceHandler();
+      resolve();
+    }
+
+    function tick() {
+      if (!typing) return;
+      i++;
+      el.textContent = text.slice(0, i);
+      if (i >= text.length) {
+        finish();
+        return;
+      }
+      timer = window.setTimeout(tick, speed);
+    }
+
+    Input.setAdvanceHandler(() => {
+      if (typing) finish();
+    });
+
+    tick();
+  });
+}
+
+const DialogueEngine = (function () {
+  'use strict';
+
+  let boxEl, speakerEl, textEl, cursorEl, continueEl, choicesEl;
+  let mounted = false;
+
+  /** 'idle' | 'typing' | 'waiting' */
+  let lineState = 'idle';
+  let charTimer = null;
+  let skipToEnd = null;
+  let resolveLine = null;
+
+  function mount() {
+    if (mounted) return;
+    boxEl = document.querySelector('.dialogue-box');
+    if (!boxEl) {
+      console.error('[DialogueEngine] no .dialogue-box found in the DOM.');
+      return;
+    }
+    speakerEl = boxEl.querySelector('.dialogue-speaker');
+    textEl = boxEl.querySelector('.dialogue-text-content');
+    cursorEl = boxEl.querySelector('.dialogue-cursor');
+    continueEl = boxEl.querySelector('.dialogue-continue');
+    choicesEl = boxEl.querySelector('.dialogue-choices');
+    boxEl.classList.add('hidden');
+    mounted = true;
+  }
+
+  function show() {
+    boxEl.classList.remove('hidden');
+  }
+
+  function hide() {
+    boxEl.classList.add('hidden');
+  }
+
+  /** Types a single line into the shared dialogue box, resolves when the player advances past it. */
+  function runLine(text) {
+    return new Promise((resolve) => {
+      lineState = 'typing';
+      let i = 0;
+      textEl.textContent = '';
+      cursorEl.style.display = '';
+      continueEl.classList.remove('visible');
+
+      function finishTyping() {
+        window.clearTimeout(charTimer);
+        textEl.textContent = text;
+        cursorEl.style.display = 'none';
+        continueEl.classList.add('visible');
+        lineState = 'waiting';
+      }
+
+      function tick() {
+        if (lineState !== 'typing') return;
+        i++;
+        textEl.textContent = text.slice(0, i);
+        if (i >= text.length) {
+          finishTyping();
+          return;
+        }
+        charTimer = window.setTimeout(tick, CHAR_MS);
+      }
+
+      skipToEnd = finishTyping;
+      resolveLine = resolve;
+      tick();
+    });
+  }
+
+  /** Renders choice buttons and resolves with whichever the player clicks. */
+  function runChoices(choices) {
+    return new Promise((resolve) => {
+      continueEl.classList.remove('visible');
+      choicesEl.innerHTML = '';
+      choices.forEach((choice, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'dialogue-choice-btn';
+        btn.type = 'button';
+        btn.textContent = choice.label || '';
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // don't also trigger the global click->advance
+          choicesEl.innerHTML = '';
+          resolve(choice.value !== undefined ? choice.value : idx);
+        });
+        choicesEl.appendChild(btn);
+      });
+    });
+  }
+
+  /** The advance handler active only while DialogueEngine.run() is in flight. */
+  function handleAdvance() {
+    if (lineState === 'typing') {
+      if (skipToEnd) skipToEnd();
+      return;
+    }
+    if (lineState === 'waiting') {
+      lineState = 'idle';
+      const resolve = resolveLine;
+      resolveLine = null;
+      if (resolve) resolve();
+    }
+  }
+
+  /**
+   * Runs a full dialogue sequence in the shared box: speaker name,
+   * each line in order (typed out, advance to continue), then
+   * optional branching choices at the end.
+   * @param {{ speaker?: string, lines: string[], choices?: {label:string, value?:*}[] }} options
+   * @returns {Promise<*>} resolves with the chosen value (if choices given) or undefined
+   */
+  async function run(options) {
+    if (!mounted) mount();
+    const { speaker = '', lines = [''], choices = null } = options;
+
+    show();
+    speakerEl.textContent = speaker;
+    Input.setAdvanceHandler(handleAdvance);
+
+    for (const line of lines) {
+      await runLine(line);
+    }
+
+    let result;
+    if (choices && choices.length) {
+      Input.clearAdvanceHandler(); // choices are click-driven, not advance-driven
+      result = await runChoices(choices);
+    }
+
+    Input.clearAdvanceHandler();
+    hide();
+    return result;
+  }
+
+  return { mount, run, typeInto };
+})();
+
+window.DialogueEngine = DialogueEngine;
+
+=== evolution.js ===
+/* =========================================================
+   LOVE QUEST — evolution.js  (Chapter 3.5)
+   Flash transition, before/after sprite swap, glowing
+   evolution text. Triggered by battle.js after specific
+   chapter victories (Mudkip->Marshtomp after Ch.2,
+   Marshtomp->Swampert after Ch.4). The Swampert->Mega
+   evolution is reserved for Chapter 4's letter scene (4.5),
+   not triggered from here.
+   ========================================================= */
+
+const Evolution = (function () {
+  'use strict';
+
+  let flashEl, spriteEl, textEl;
+  let onDoneCallback = null;
+
+  const ANNOUNCE_KEY_BY_CHAPTER = {
+    2: 'mudkipToMarshtomp',
+    4: 'marshtompToSwampert',
+  };
+
+  function mount() {
+    flashEl = document.querySelector('#evolution .evolution-flash');
+    spriteEl = document.querySelector('#evolution .evolution-sprite');
+    textEl = document.querySelector('#evolution .evolution-text');
+  }
+
+  function wait(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
+  }
+
+  /**
+   * @param {number} chapterId - which chapter's victory triggered this
+   * @param {Function} onDone - called once the player advances past the reveal
+   */
+  function startFor(chapterId, onDone) {
+    onDoneCallback = onDone;
+    SceneManager.go('evolution', { chapterId });
+  }
+
+  function init() {
+    mount();
+    SceneManager.register('evolution', {
+      async onEnter(payload) {
+        const chapterId = payload && payload.chapterId;
+        const key = ANNOUNCE_KEY_BY_CHAPTER[chapterId];
+        const announceText = key ? StoryData.evolution[key].announceText : '';
+
+        GameAudio.play('evolution');
+
+        // Before sprite: current stage, static.
+        spriteEl.className = 'sprite evolution-sprite';
+        Assets.setBg(spriteEl, Assets.partyFront(GameState.state.partyStage));
+        textEl.textContent = '';
+        flashEl.classList.remove('evolution-flash-active');
+
+        await wait(500);
+        flashEl.classList.add('evolution-flash-active');
+        await wait(350);
+
+        GameState.evolve();
+
+        // After sprite: new stage, revealed once the flash covers the swap.
+        Assets.setBg(spriteEl, Assets.partyFront(GameState.state.partyStage));
+        spriteEl.classList.add('evolution-sprite-reveal');
+
+        await wait(450);
+        flashEl.classList.remove('evolution-flash-active');
+
+        await DialogueEngine.typeInto(textEl, announceText || `${GameState.partyLabel()} evolved!`);
+        await Input.waitForAdvance();
+
+        const done = onDoneCallback;
+        onDoneCallback = null;
+        if (done) done();
+      },
+    });
+  }
+
+  return { init, startFor };
+})();
+window.Evolution = Evolution;
+
+=== input.js ===
+/* =========================================================
+   LOVE QUEST — input.js  (Chapter 2.5)
+   ONE clean keyboard/click handler. Nothing else in the
+   codebase should attach its own document-level key listener.
+
+   Two ways consumers get input:
+   1. A scene registers an `onInput(action)` hook with
+      SceneManager — used for things like the boot screen's
+      "press to skip / press to advance" state machine.
+   2. Code that's actively waiting on the *next* press (like
+      DialogueEngine mid-line) calls setAdvanceHandler() /
+      waitForAdvance() to intercept the very next advance,
+      bypassing the scene-level hook until it's done.
+   ========================================================= */
+
+const Input = (function () {
+  'use strict';
+
+  const ADVANCE_KEYS = new Set(['Enter', ' ', 'Spacebar', 'z', 'Z']);
+  const DIRECTION_KEYS = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+  };
+
+  /** @type {Function|null} one-shot/ongoing override for the next advance press */
+  let advanceHandler = null;
+  let initialized = false;
+
+  function init() {
+    if (initialized) return; // guard against double-init
+    initialized = true;
+    document.addEventListener('keydown', onKeyDown);
+    document.addEventListener('click', onClick);
+  }
+
+  function onKeyDown(e) {
+    if (ADVANCE_KEYS.has(e.key)) {
+      e.preventDefault();
+      dispatch('advance');
+      return;
+    }
+    const dir = DIRECTION_KEYS[e.key];
+    if (dir) {
+      e.preventDefault();
+      dispatch(dir);
+    }
+  }
+
+  function onClick() {
+    // A plain click anywhere always means "advance." Elements that need
+    // their own click behavior (choice buttons, map regions) call
+    // event.stopPropagation() so this fallback doesn't also fire.
+    dispatch('advance');
+  }
+
+  function dispatch(action) {
+    if (action === 'advance' && advanceHandler) {
+      advanceHandler();
+      return;
+    }
+    if (window.SceneManager && typeof SceneManager.handleInput === 'function') {
+      SceneManager.handleInput(action);
+    }
+  }
+
+  /** Intercept the next advance press(es) with a custom handler. */
+  function setAdvanceHandler(fn) {
+    advanceHandler = fn;
+  }
+
+  /** Release the override so advance presses fall back to the active scene's onInput. */
+  function clearAdvanceHandler() {
+    advanceHandler = null;
+  }
+
+  /** Convenience: resolves the next time the player presses advance. */
+  function waitForAdvance() {
+    return new Promise((resolve) => {
+      setAdvanceHandler(() => {
+        clearAdvanceHandler();
+        resolve();
+      });
+    });
+  }
+
+  return { init, setAdvanceHandler, clearAdvanceHandler, waitForAdvance };
+})();
+
+window.Input = Input;
+
+=== letter.js ===
+/* =========================================================
+   LOVE QUEST — letter.js
+   STUB — built out in Chapter 4.4 of the rebuild plan.
+   Not implemented yet. Intentionally left minimal so the
+   file exists for index.html to reference without erroring.
+   ========================================================= */
+
+=== main.js ===
+/* =========================================================
+   LOVE QUEST — main.js
+   WIRING ONLY. No game logic lives here — it boots the core
+   engines in dependency order, hands off to each scene
+   module's own init(), and kicks off the very first scene.
+   ========================================================= */
+
+document.addEventListener('DOMContentLoaded', () => {
+  Input.init();
+  SceneManager.init('#game-root');
+  DialogueEngine.mount();
+  HUD.mount();
+
+  Boot.init();      // registers 'boot', 'name-reveal', 'intro'
+  Map.init();        // registers 'map'
+  Chapter.init();     // registers 'chapter'
+  Battle.init();      // registers 'battle'
+  Evolution.init();   // registers 'evolution'
+
+  // Chapter 4 will add: Quiz.init(), Letter.init().
+
+  SceneManager.go('boot');
+});
+
+=== map.js ===
+/* =========================================================
+   LOVE QUEST — map.js
+   Three closely related things live here, same reasoning as
+   boot.js bundling boot/name-reveal/intro: none of these has
+   enough surface area to justify its own file, and they all
+   read/write the same progress state.
+
+   1. GameState — the single source of truth for how far the
+      player has gotten (unlocked locations, party evolution
+      stage, level/XP, which of the 5 items are collected).
+   2. HUD — the persistent party/item panel shown during
+      map, chapter, and battle scenes.
+   3. Map — the world map screen itself (Chapter 3.1).
+   ========================================================= */
+
+const GameState = (function () {
+  'use strict';
+
+  const STAGE_ORDER = ['mudkip', 'marshtomp', 'swampert', 'mega-swampert'];
+  const STAGE_LABEL = {
+    mudkip: 'MUDKIP',
+    marshtomp: 'MARSHTOMP',
+    swampert: 'SWAMPERT',
+    'mega-swampert': 'MEGA SWAMPERT',
+  };
+
+  const state = {
+    unlockedLocationIds: ['lamoria-town'],
+    completedChapterIds: [],
+    partyStage: 'mudkip',
+    partyLevel: 5,
+    partyXp: 0,
+    partyXpToNext: 100,
+    // 5 slots total: one per chapter (4) + one tied to the Ch.4 letter/reveal sequence
+    itemsUnlocked: [false, false, false, false, false],
+  };
+
+  function isUnlocked(locationId) {
+    return state.unlockedLocationIds.includes(locationId);
+  }
+
+  function unlockLocation(locationId) {
+    if (!isUnlocked(locationId)) state.unlockedLocationIds.push(locationId);
+  }
+
+  /**
+   * Marks a chapter finished, grants XP, and flips on the item
+   * slot for it (if given).
+   * @param {number} chapterId
+   * @param {number} [itemSlotIndex]
+   */
+  function completeChapter(chapterId, itemSlotIndex) {
+    if (!state.completedChapterIds.includes(chapterId)) {
+      state.completedChapterIds.push(chapterId);
+    }
+    if (typeof itemSlotIndex === 'number' && itemSlotIndex >= 0) {
+      state.itemsUnlocked[itemSlotIndex] = true;
+    }
+    state.partyXp += 20;
+    while (state.partyXp >= state.partyXpToNext) {
+      state.partyXp -= state.partyXpToNext;
+      state.partyLevel += 1;
+    }
+  }
+
+  /** Advances the party to the next evolution stage, if any remain. */
+  function evolve() {
+    const idx = STAGE_ORDER.indexOf(state.partyStage);
+    if (idx < STAGE_ORDER.length - 1) {
+      state.partyStage = STAGE_ORDER[idx + 1];
+      return true;
+    }
+    return false;
+  }
+
+  function partyLabel() {
+    return STAGE_LABEL[state.partyStage];
+  }
+
+  return { state, isUnlocked, unlockLocation, completeChapter, evolve, partyLabel, STAGE_ORDER };
+})();
+window.GameState = GameState;
+
+const HUD = (function () {
+  'use strict';
+
+  let el, nameEl, levelEl, xpFillEl, slotEls;
+
+  function mount() {
+    el = document.querySelector('.hud');
+    if (!el) return;
+    nameEl = el.querySelector('.hud-party-name');
+    levelEl = el.querySelector('.hud-party-level');
+    xpFillEl = el.querySelector('.hud-xp-fill');
+    slotEls = Array.from(el.querySelectorAll('.hud-item-slot'));
+  }
+
+  function show() {
+    if (el) el.classList.remove('hidden');
+  }
+
+  function hide() {
+    if (el) el.classList.add('hidden');
+  }
+
+  function update() {
+    if (!el) return;
+    nameEl.textContent = GameState.partyLabel();
+    levelEl.textContent = `Lv.${GameState.state.partyLevel}`;
+    const pct = Math.round((GameState.state.partyXp / GameState.state.partyXpToNext) * 100);
+    xpFillEl.style.width = `${pct}%`;
+    slotEls.forEach((slot, i) => {
+      slot.classList.toggle('unlocked', !!GameState.state.itemsUnlocked[i]);
+    });
+  }
+
+  return { mount, show, hide, update };
+})();
+window.HUD = HUD;
+
+const Map = (function () {
+  'use strict';
+
+  let locationsEl;
+
+  function mount() {
+    locationsEl = document.querySelector('#map .map-locations');
+  }
+
+  function render() {
+    locationsEl.innerHTML = '';
+    StoryData.map.locations.forEach((loc) => {
+      const unlocked = GameState.isUnlocked(loc.id);
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'map-location';
+      btn.classList.toggle('locked', !unlocked);
+      btn.disabled = !unlocked;
+      btn.textContent = unlocked ? loc.name : '???';
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation(); // handled directly, not via the global advance-click
+        if (!unlocked) return;
+        Chapter.travelTo(loc.id);
+      });
+      locationsEl.appendChild(btn);
+    });
+  }
+
+  function init() {
+    mount();
+    SceneManager.register('map', {
+      onEnter() {
+        GameAudio.play('map');
+        HUD.show();
+        HUD.update();
+        render();
+      },
+    });
+  }
+
+  return { init, render };
+})();
+window.Map = Map;
+
+=== quiz.js ===
+/* =========================================================
+   LOVE QUEST — quiz.js
+   STUB — built out in Chapter 4.1-4.2 of the rebuild plan.
+   Not implemented yet. Intentionally left minimal so the
+   file exists for index.html to reference without erroring.
+   ========================================================= */
+
+=== sceneManager.js ===
+/* =========================================================
+   LOVE QUEST — sceneManager.js
+   The backbone every screen plugs into. Same pattern the old
+   build used (it worked) — cleaned up so every scene module
+   follows it consistently. No scene should invent its own
+   show/hide logic; it registers with SceneManager instead.
+   ========================================================= */
+
+const SceneManager = (function () {
+  'use strict';
+
+  /** @type {Record<string, HTMLElement>} */
+  const scenes = {};
+
+  /** @type {Record<string, { onEnter?: Function, onLeave?: Function }>} */
+  const registry = {};
+
+  let currentSceneId = null;
+  let rootEl = null;
+  let transitioning = false;
+
+  const FADE_MS = 240; // keep in sync with --t-med in style.css
+
+  /**
+   * Wire up the manager against the #game-root container.
+   * Call once from boot.js / main.js before any scene work happens.
+   */
+  function init(rootSelector) {
+    rootEl = document.querySelector(rootSelector || '#game-root');
+    if (!rootEl) {
+      console.error('[SceneManager] root element not found:', rootSelector);
+      return;
+    }
+    rootEl.querySelectorAll('.scene').forEach((el) => {
+      const id = el.dataset.scene;
+      if (!id) {
+        console.warn('[SceneManager] .scene element missing data-scene id', el);
+        return;
+      }
+      scenes[id] = el;
+    });
+  }
+
+  /**
+   * Register a scene's lifecycle hooks. Every scene module
+   * (boot.js, chapter.js, battle.js, etc.) calls this once.
+   * @param {string} id - must match the element's data-scene attribute
+   * @param {{ onEnter?: Function, onLeave?: Function, onInput?: Function }} hooks
+   *   onInput(action) receives 'advance' | 'up' | 'down' | 'left' | 'right'
+   *   from input.js whenever nothing has claimed the press directly
+   *   (e.g. DialogueEngine mid-line). Optional — most scenes don't need it.
+   */
+  function register(id, hooks) {
+    if (!scenes[id]) {
+      console.warn(`[SceneManager] register() called for unknown scene "${id}". ` +
+        'Make sure a matching <div class="scene" data-scene="' + id + '"> exists before init().');
+    }
+    registry[id] = hooks || {};
+  }
+
+  /**
+   * Transition to a scene by id. Runs the current scene's onLeave,
+   * fades it out, fades the new one in, then runs its onEnter.
+   * @param {string} id
+   * @param {*} [payload] - optional data forwarded to onEnter
+   */
+  function go(id, payload) {
+    if (!scenes[id]) {
+      console.error(`[SceneManager] go("${id}") — no scene with that id is registered.`);
+      return;
+    }
+    if (transitioning) return;
+    if (id === currentSceneId) return;
+
+    transitioning = true;
+    const prevId = currentSceneId;
+    const prevEl = prevId ? scenes[prevId] : null;
+    const nextEl = scenes[id];
+
+    const leaveHook = prevId && registry[prevId] && registry[prevId].onLeave;
+    if (leaveHook) leaveHook();
+
+    if (prevEl) {
+      prevEl.classList.add('fade-out');
+      prevEl.classList.remove('active');
+    }
+
+    // Small delay lets the fade-out transition play before the next
+    // scene claims pointer events / visibility.
+    window.setTimeout(() => {
+      if (prevEl) prevEl.classList.remove('fade-out');
+      nextEl.classList.add('active');
+      currentSceneId = id;
+      transitioning = false;
+
+      const enterHook = registry[id] && registry[id].onEnter;
+      if (enterHook) enterHook(payload);
+    }, prevEl ? FADE_MS : 0);
+  }
+
+  /** Returns the id of the currently active scene. */
+  function current() {
+    return currentSceneId;
+  }
+
+  /**
+   * Forward an input action to the active scene's onInput hook, if any.
+   * Called by input.js — scene modules never listen for keys/clicks directly.
+   * @param {'advance'|'up'|'down'|'left'|'right'} action
+   */
+  function handleInput(action) {
+    if (transitioning || !currentSceneId) return;
+    const hook = registry[currentSceneId] && registry[currentSceneId].onInput;
+    if (hook) hook(action);
+  }
+
+  return { init, register, go, current, handleInput };
+})();
+
+window.SceneManager = SceneManager;
+
+=== storyData.js ===
+/* =========================================================
+   LOVE QUEST — storyData.js
+   THE RULE: no visible copy is ever hardcoded into HTML/JS.
+   Every writable field lives here as "". Scene modules only
+   ever READ from StoryData — they never contain raw text.
+
+   When it's time to write, this is the ONLY file that gets
+   touched to fill in every word in the game.
+   ========================================================= */
+
+const StoryData = {
+
+  // -------------------------------------------------------
+  // Boot screen (Chapter 2.1)
+  // -------------------------------------------------------
+  boot: {
+    subtitle: "",   // small text under the title on the boot screen
+    version: "",    // e.g. a version/date stamp, optional flavor
+  },
+
+  // -------------------------------------------------------
+  // Asset paths — NOT copy, just where real files live on disk.
+  // See assets/README.md for the exact drop-in folder layout.
+  // -------------------------------------------------------
+  assets: {
+    pokemonFrontDir: "assets/sprites/pokemon/front",
+    pokemonBackDir: "assets/sprites/pokemon/back",
+    trainerDir: "assets/sprites/trainers",
+    dialogueBoxImg: "assets/dialogue-box.png",
+    megaSwampertSheet: "assets/mega-swampert-sheet.gif",
+    // Party evolution stage -> sprite lookup. Mega Swampert has no back
+    // sprite (it never appears in battle — only in the Ch.4.5 reveal),
+    // so `sheet: true` skips the dex-based lookup for that stage.
+    partyStageSprites: {
+      mudkip:          { dex: 258, ext: "gif" },
+      marshtomp:        { dex: 259, ext: "gif" },
+      swampert:         { dex: 260, ext: "gif" },
+      "mega-swampert":  { sheet: true },
+    },
+  },
+
+  // -------------------------------------------------------
+  // Name reveal / intro (Chapter 2.2, 2.4)
+  // -------------------------------------------------------
+  intro: {
+    openingLine: "",      // Mudkip's opening dialogue line(s) — array below
+    openingLines: [""],   // full array if more than one line is needed
+    nameRevealText: "",   // text shown as "Lara" types out letter-by-letter
+  },
+
+  // -------------------------------------------------------
+  // World map labels (Chapter 3.1)
+  // Location names can stay as placeholders or be renamed —
+  // not "her text," a world-building call you can make anytime.
+  // -------------------------------------------------------
+  map: {
+    locations: [
+      { id: "lamoria-town",   name: "Lamoria Town",        chapter: 1 },
+      { id: "whisper-clearing", name: "Whisper Clearing",  chapter: 2 },
+      { id: "arcade-ruins",   name: "Arcade Ruins",        chapter: 3 },
+      { id: "echo-cave",      name: "Echo Cave / Route 911", chapter: 4 },
+      { id: "summit-of-firsts", name: "Summit of Firsts",  chapter: 5 },
+    ],
+  },
+
+  // -------------------------------------------------------
+  // Chapters / memory screens (Chapter 3.3)
+  // dialogue: array of lines fed straight into DialogueEngine.
+  // itemName/itemDesc: shown on the item-get screen (3.6).
+  // -------------------------------------------------------
+  chapters: [
+    {
+      id: 1,
+      locationId: "lamoria-town",
+      npcSprite: "backpacker",
+      title: "",
+      location: "",
+      npc: "",
+      dialogue: [""],
+      memoryText: "",
+      itemName: "",
+      itemDesc: "",
+    },
+    {
+      id: 2,
+      locationId: "whisper-clearing",
+      npcSprite: "hexmaniac-gen3",
+      title: "",
+      location: "",
+      npc: "",
+      dialogue: [""],
+      memoryText: "",
+      itemName: "",
+      itemDesc: "",
+    },
+    {
+      id: 3,
+      locationId: "arcade-ruins",
+      npcSprite: "collector",
+      title: "",
+      location: "",
+      npc: "",
+      dialogue: [""],
+      memoryText: "",
+      itemName: "",
+      itemDesc: "",
+    },
+    {
+      id: 4,
+      locationId: "echo-cave",
+      npcSprite: "hiker",
+      title: "",
+      location: "",
+      npc: "",
+      dialogue: [""],
+      memoryText: "",
+      itemName: "",
+      itemDesc: "",
+    },
+  ],
+
+  // -------------------------------------------------------
+  // Battle system (Chapter 3.4) — enemy/trainer names + flavor.
+  // Rename freely; these are world-building, not "her words."
+  // -------------------------------------------------------
+  battle: {
+    // One real Pokémon per chapter, matched 1:1 by array position to
+    // StoryData.chapters (chapter 1 -> enemies[0], etc). dex/ext point
+    // at assets/sprites/pokemon/front/<dex>.<ext>.
+    enemies: [
+      { id: "sunflora",   name: "Sunflora",   dex: 192, ext: "gif", introLine: "" }, // Ch.1 — Lamoria Town
+      { id: "noctowl",    name: "Noctowl",    dex: 164, ext: "gif", introLine: "" }, // Ch.2 — Whisper Clearing
+      { id: "dusknoir",   name: "Dusknoir",   dex: 477, ext: "gif", introLine: "" }, // Ch.3 — Arcade Ruins
+      { id: "roggenrola", name: "Roggenrola", dex: 524, ext: "gif", introLine: "" }, // Ch.4 — Echo Cave
+    ],
+    moveNames: [""],       // Mudkip/Marshtomp/Swampert move labels, if custom
+    victoryLine: "",
+  },
+
+  // -------------------------------------------------------
+  // Evolution sequences (Chapter 3.5)
+  // -------------------------------------------------------
+  evolution: {
+    mudkipToMarshtomp: { announceText: "" },
+    marshtompToSwampert: { announceText: "" },
+    swampertToMega: { announceText: "" }, // tied to Chapter 4 letter/reveal
+  },
+
+  // -------------------------------------------------------
+  // Quiz gate (Chapter 4.1, 4.2) — 5 clues total.
+  // -------------------------------------------------------
+  quiz: {
+    inscription: "",
+    clues: [
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+      { question: "", answer: "" },
+    ],
+    wrongFeedback: "",   // shown on incorrect answer
+    correctFeedback: "", // shown on correct answer
+  },
+
+  // -------------------------------------------------------
+  // Mystery reveal (Chapter 4.3)
+  // -------------------------------------------------------
+  mysteryReveal: {
+    assembleText: "", // text shown as clues assemble
+  },
+
+  // -------------------------------------------------------
+  // Love letter (Chapter 4.4)
+  // -------------------------------------------------------
+  letter: {
+    body: "",
+    signOff: "",
+  },
+
+  // -------------------------------------------------------
+  // Final reveal (Chapter 4.5)
+  // -------------------------------------------------------
+  finalReveal: {
+    revealText: "", // "Jerome revealed" moment text
+  },
+
+  // -------------------------------------------------------
+  // Hidden easter eggs (Chapter 4.6)
+  // -------------------------------------------------------
+  easterEggs: {
+    bookshelfMessage: "",
+    playlistUrl: "",
+  },
+};
+
+// Exposed as a plain global — no bundler in this project.
+// (If a module system gets introduced later, switch this one line.)
+window.StoryData = StoryData;
+
+=== index.html ===
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Love Quest</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="game-root">
+
+  <!-- Chapter 2.1 — Boot screen -->
+  <section class="scene" id="boot" data-scene="boot">
+    <div class="starfield" aria-hidden="true"></div>
+    <h1 class="boot-title">LOVE QUEST</h1>
+    <p class="boot-subtitle"></p>
+    <p class="press-start">PRESS START</p>
+    <p class="boot-version"></p>
+  </section>
+
+  <!-- Chapter 2.2 — Name reveal -->
+  <section class="scene" id="name-reveal" data-scene="name-reveal">
+    <div class="name-reveal-text"></div>
+  </section>
+
+  <!-- Chapter 2.4 — Intro scene -->
+  <section class="scene" id="intro" data-scene="intro">
+    <div class="intro-stage">
+      <div class="sprite sprite-mudkip" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 3.1 — World map -->
+  <section class="scene" id="map" data-scene="map">
+    <div class="map-bg pixel-border" aria-hidden="true"></div>
+    <div class="map-locations"></div>
+  </section>
+
+  <!-- Chapter 3.3 — Chapter / memory screen -->
+  <section class="scene" id="chapter" data-scene="chapter">
+    <div class="chapter-bg" aria-hidden="true"></div>
+    <div class="chapter-header">
+      <span class="chapter-label"></span>
+      <span class="chapter-title"></span>
+    </div>
+    <div class="chapter-stage">
+      <div class="sprite sprite-player" aria-hidden="true"></div>
+      <div class="sprite sprite-npc" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 3.4 — Battle -->
+  <section class="scene" id="battle" data-scene="battle">
+    <div class="battle-bg" aria-hidden="true">
+      <div class="battle-sky"></div>
+      <div class="battle-ground"></div>
+    </div>
+
+    <div class="battle-panel battle-panel-enemy pixel-border">
+      <div class="battle-name"></div>
+      <div class="battle-level"></div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+    <div class="sprite battle-sprite-enemy" aria-hidden="true"></div>
+
+    <div class="sprite battle-sprite-player" aria-hidden="true"></div>
+    <div class="battle-panel battle-panel-player pixel-border">
+      <div class="battle-name"></div>
+      <div class="battle-level"></div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+
+    <div class="battle-log"></div>
+
+    <div class="battle-menu pixel-border-gold">
+      <button type="button" class="battle-menu-btn" data-action="fight">FIGHT</button>
+      <button type="button" class="battle-menu-btn" data-action="item">ITEM</button>
+      <button type="button" class="battle-menu-btn" data-action="pokemon">POK&Eacute;MON</button>
+      <button type="button" class="battle-menu-btn" data-action="run">RUN</button>
+    </div>
+    <div class="battle-submenu pixel-border-gold hidden"></div>
+  </section>
+
+  <!-- Chapter 3.5 — Evolution sequence -->
+  <section class="scene" id="evolution" data-scene="evolution">
+    <div class="evolution-flash" aria-hidden="true"></div>
+    <div class="sprite evolution-sprite" aria-hidden="true"></div>
+    <div class="evolution-text"></div>
+  </section>
+
+  <!-- Chapter 4+ will add: #quiz, #letter scenes here, each
+       following the same <section class="scene" data-scene="..."> pattern. -->
+
+  <!--
+    Persistent HUD (Chapter 3.2). Shown from the map scene onward;
+    Chapter 4's quiz/letter flow will hide it when it's not needed.
+  -->
+  <div class="hud hidden">
+    <div class="hud-party">
+      <div class="hud-party-name"></div>
+      <div class="hud-party-level"></div>
+      <div class="hud-xp-bar"><div class="hud-xp-fill"></div></div>
+    </div>
+    <div class="hud-items">
+      <div class="hud-item-slot" data-slot="0"></div>
+      <div class="hud-item-slot" data-slot="1"></div>
+      <div class="hud-item-slot" data-slot="2"></div>
+      <div class="hud-item-slot" data-slot="3"></div>
+      <div class="hud-item-slot" data-slot="4"></div>
+    </div>
+  </div>
+
+  <!--
+    Memory box (Chapter 3.3) — a variant of the dialogue box that
+    stays open (scrollable) instead of typing line by line, since
+    memory text is meant to be re-readable, not paced.
+  -->
+  <div class="memory-box pixel-border-pink hidden">
+    <div class="memory-chapter-label"></div>
+    <div class="memory-title"></div>
+    <div class="memory-text"></div>
+    <button type="button" class="memory-continue">CONTINUE</button>
+  </div>
+
+  <!--
+    Item-get overlay (Chapter 3.6) — single reusable instance,
+    outside every scene, same pattern as the dialogue box.
+  -->
+  <div class="item-get-overlay hidden">
+    <div class="item-get-panel pixel-border-gold">
+      <div class="item-get-emoji"></div>
+      <div class="item-get-name"></div>
+      <div class="item-get-desc"></div>
+      <button type="button" class="item-get-continue">CONTINUE</button>
+    </div>
+  </div>
+
+  <!--
+    THE single reusable dialogue box (Chapter 1.4 / 2.3).
+    Lives once, outside every .scene, positioned above whatever
+    scene is currently active. DialogueEngine.js shows/hides and
+    populates it — no scene ever gets its own copy of this markup.
+  -->
+  <div class="dialogue-box hidden">
+    <div class="dialogue-speaker"></div>
+    <div class="dialogue-text">
+      <span class="dialogue-text-content"></span><span class="dialogue-cursor"></span>
+    </div>
+    <button type="button" class="dialogue-continue" aria-label="Continue"></button>
+    <div class="dialogue-choices"></div>
+  </div>
+
+</div>
+
+<!-- Script order matters: data first, engines second, feature
+     modules third, wiring last. -->
+<script src="js/storyData.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/sceneManager.js"></script>
+<script src="js/input.js"></script>
+<script src="js/dialogueEngine.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/boot.js"></script>
+<script src="js/map.js"></script>
+<script src="js/chapter.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/evolution.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/letter.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
+

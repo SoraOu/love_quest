@@ -1,0 +1,1562 @@
+/* =========================================================
+   LOVE QUEST — style.css
+   ONE stylesheet. No phase-numbered additions files, ever.
+   Sections:
+     1.  Design Tokens (:root)
+     2.  Base Reset & Global Styles
+     3.  Scene System
+     4.  Pixel Border Utilities
+     5.  Dialogue Box Component (single reusable component)
+     6.  Boot / Name Reveal / Intro
+     7.  World Map & HUD
+     8.  Chapter / Memory Screen
+     9.  Item-Get Overlay
+     10. Battle System
+     11. Evolution Sequence
+     12. Pixel Sprites (enemies/trainers/party stages)
+     13. Quiz Gate
+     14. Mystery Reveal
+     15. Love Letter
+     16. Finale & Easter Eggs
+     17. Secret Overlay (shared by both easter eggs)
+   ========================================================= */
+
+/* ---------------------------------------------------------
+   1. DESIGN TOKENS
+   "Deep ocean meets warm twilight" — carried over from the
+   old build since the palette worked. This is a design call,
+   not "her text," so it's fine to ship as real values now.
+   Change these six colors and the whole game re-skins itself.
+   --------------------------------------------------------- */
+:root {
+  /* --- Color palette --- */
+  --color-ocean-deep:   #0b1d3a;   /* primary background */
+  --color-ocean-mid:    #14335c;   /* panel / secondary background */
+  --color-twilight:     #6a4c93;   /* accent — purple dusk */
+  --color-twilight-warm:#ff8c69;   /* accent — warm coral/gold light */
+  --color-foam:         #eaf4ff;   /* primary text on dark */
+  --color-gold:         #ffd166;   /* highlight / gold border variant */
+  --color-pink:         #ff6f9c;   /* highlight / pink border variant */
+  --color-cyan:         #5ee7ff;   /* highlight / cool cyan variant */
+
+  /* Semantic aliases — reference these in components, not raw colors,
+     so a future palette swap only touches this block. */
+  --color-bg:           var(--color-ocean-deep);
+  --color-panel:        var(--color-ocean-mid);
+  --color-text:         var(--color-foam);
+  --color-text-dim:     #9fb3d1;
+  --color-accent:       var(--color-twilight-warm);
+  --color-accent-2:     var(--color-twilight);
+
+  /* HP bar states (used by battle.js later, defined now so nothing
+     hardcodes a color later) */
+  --color-hp-high: #6ee7a0;
+  --color-hp-mid:  #ffd166;
+  --color-hp-low:  #ff5d5d;
+
+  /* Flat neutral fill for every scene background until real art
+     lands in assets/scenes/ (see assets/README.md). Deliberately
+     outside the ocean/twilight palette so an un-illustrated scene
+     is obvious at a glance instead of quietly passing as "done." */
+  --color-bg-placeholder: #2b2b33;
+
+  /* --- Pixel unit scale ---
+     Everything sizes off a single base unit so raising/lowering
+     "chunkiness" of the pixel art is a one-line change. */
+  --px: 4px;
+  --px-1: calc(var(--px) * 1);
+  --px-2: calc(var(--px) * 2);
+  --px-3: calc(var(--px) * 3);
+  --px-4: calc(var(--px) * 4);
+  --px-6: calc(var(--px) * 6);
+  --px-8: calc(var(--px) * 8);
+
+  /* --- Typography ---
+     clamp() so type scales between mobile and desktop without
+     a separate breakpoint pass (5.4 still does a full QA check). */
+  --font-display: 'Press Start 2P', 'VT323', monospace;
+  --font-body: 'VT323', 'Press Start 2P', monospace;
+
+  --fs-xs:   clamp(0.6rem, 0.55rem + 0.2vw, 0.75rem);
+  --fs-sm:   clamp(0.75rem, 0.7rem + 0.25vw, 0.9rem);
+  --fs-md:   clamp(0.95rem, 0.85rem + 0.4vw, 1.15rem);
+  --fs-lg:   clamp(1.2rem, 1rem + 0.8vw, 1.75rem);
+  --fs-xl:   clamp(1.6rem, 1.3rem + 1.4vw, 2.5rem);
+
+  /* --- Z-index layers ---
+     Named layers so scene modules never guess a magic number. */
+  --z-bg: 0;
+  --z-scene: 10;
+  --z-hud: 20;
+  --z-dialogue: 30;
+  --z-overlay: 40;
+  --z-transition: 50;
+
+  /* --- Transitions --- */
+  --t-fast: 120ms;
+  --t-med: 240ms;
+  --t-slow: 480ms;
+  --ease-pixel: steps(6, end);
+  --ease-smooth: ease-in-out;  /* on-screen movement / morphing */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);   /* entering/exiting */
+  --ease-hover: ease;           /* hover / color changes */
+}
+
+/* ---------------------------------------------------------
+   2. BASE RESET & GLOBAL STYLES
+   --------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* the game is a fixed viewport, not a scroll page */
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  text-rendering: optimizeLegibility;
+}
+
+img, canvas, .sprite, [class$="-bg"]  {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
+.sprite {
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: contain;
+}
+
+button {
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+button:focus-visible,
+[tabindex]:focus-visible {
+  outline: var(--px-1) solid var(--color-gold);
+  outline-offset: var(--px-1);
+}
+
+a {
+  color: var(--color-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  /* The blanket rule above collapses the infinite blink to 1 frozen frame,
+     which happens to land on opacity:0 — silently hiding the "still typing"
+     cursor instead of just removing its motion. Keep it steadily visible. */
+  .dialogue-cursor {
+    animation: none !important;
+    opacity: 1;
+  }
+}
+
+/* ---------------------------------------------------------
+   3. SCENE SYSTEM
+   Every screen in the game is a `.scene` that sceneManager.js
+   toggles via `.active` / `.fade-out`. No scene module should
+   invent its own show/hide mechanism.
+   --------------------------------------------------------- */
+#game-root {
+  position: relative;
+  width: 100vw;
+  height: 100vh;
+  min-height: 100dvh;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transition: opacity var(--t-med) var(--ease-out);
+}
+
+.scene.active {
+  opacity: 1;
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.scene.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------
+   4. PIXEL BORDER UTILITIES
+   Same double-shadow technique from the old build, defined
+   once. Apply `.pixel-border` plus an optional color modifier.
+   --------------------------------------------------------- */
+.pixel-border {
+  position: relative;
+  border: var(--px-1) solid var(--color-foam);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-foam);
+  image-rendering: pixelated;
+}
+
+.pixel-border-gold {
+  border-color: var(--color-gold);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-gold);
+}
+
+.pixel-border-pink {
+  border-color: var(--color-pink);
+  box-shadow:
+    0 0 0 var(--px-1) var(--color-ocean-deep),
+    0 0 0 calc(var(--px-1) * 2) var(--color-pink);
+}
+
+/* ---------------------------------------------------------
+   5. DIALOGUE BOX — single reusable component
+   Every scene (intro, chapter, battle) reuses this same
+   markup via dialogueEngine.js. No per-scene duplicate boxes.
+
+   Expected markup (built by JS, shown here for reference):
+
+   <div class="dialogue-box pixel-border">
+     <div class="dialogue-speaker"></div>
+     <div class="dialogue-text">
+       <span class="dialogue-text-content"></span><span class="dialogue-cursor"></span>
+     </div>
+     <button class="dialogue-continue" aria-label="Continue"></button>
+     <div class="dialogue-choices"></div>
+   </div>
+   --------------------------------------------------------- */
+.dialogue-box.hidden {
+  display: none;
+}
+
+.dialogue-box {
+  position: absolute;
+  left: 50%;
+  bottom: var(--px-6);
+  transform: translateX(-50%);
+  width: min(92vw, 720px);
+  min-height: calc(var(--px-8) * 5);
+  background-color: var(--color-panel); /* fallback while dialogue-box.png is still a placeholder */
+  background-image: url('../assets/dialogue-box.png');
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  padding: var(--px-4) var(--px-6);
+  z-index: var(--z-dialogue);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-2);
+}
+
+.dialogue-speaker {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  color: var(--color-accent);
+  letter-spacing: 0.05em;
+  min-height: 1em; /* reserves space even when empty */
+}
+
+.dialogue-text {
+  font-size: var(--fs-md);
+  line-height: 1.5;
+  color: var(--color-text);
+  min-height: 3em;
+}
+
+/* Dev-only placeholder — shows "Dialogue goes here" only while
+   .dialogue-text-content has no text in it yet. Disappears the
+   instant dialogueEngine.js types the first real character in;
+   never appears alongside real content. */
+.dialogue-text-content:empty::before {
+  content: "Dialogue goes here";
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+.dialogue-cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1em;
+  background: var(--color-text);
+  vertical-align: text-bottom;
+  animation: dialogue-blink 800ms steps(1) infinite;
+}
+
+@keyframes dialogue-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.dialogue-continue {
+  align-self: flex-end;
+  width: 0;
+  height: 0;
+  border-left: var(--px-2) solid transparent;
+  border-right: var(--px-2) solid transparent;
+  border-top: var(--px-2) solid var(--color-accent);
+  animation: dialogue-bounce 900ms ease-in-out infinite;
+  opacity: 0; /* dialogueEngine.js toggles this visible once a line finishes typing */
+}
+
+.dialogue-continue.visible {
+  opacity: 1;
+}
+
+@keyframes dialogue-bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(var(--px-1)); }
+}
+
+.dialogue-choices {
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-1);
+}
+
+.dialogue-choices:empty {
+  display: none;
+}
+
+.dialogue-choice-btn {
+  text-align: left;
+  padding: var(--px-1) var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-text);
+  transition: background var(--t-fast) var(--ease-hover);
+}
+
+.dialogue-choice-btn:hover,
+.dialogue-choice-btn:focus-visible {
+  background: var(--color-accent-2);
+}
+
+@media (max-width: 480px) {
+  .dialogue-box {
+    width: 94vw;
+    padding: var(--px-3) var(--px-4);
+    bottom: var(--px-4);
+  }
+}
+
+/* ---------------------------------------------------------
+   6. BOOT / NAME REVEAL / INTRO  (Chapter 2)
+   --------------------------------------------------------- */
+
+/* --- 6.1 Boot screen --- */
+/* Real image goes in assets/scenes/boot.gif — background-color is
+   the fallback shown until that file exists (same convention as
+   dialogue-box.png). .starfield renders on top, unchanged. */
+.boot-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/boot.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.starfield {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: transparent;
+  background-image:
+    radial-gradient(1.5px 1.5px at 10% 20%, var(--color-foam) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 80% 10%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 30% 70%, var(--color-gold) 100%, transparent),
+    radial-gradient(1px 1px at 60% 40%, var(--color-foam) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 90% 60%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 45% 85%, var(--color-twilight-warm) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 20% 50%, var(--color-foam) 100%, transparent),
+    radial-gradient(1px 1px at 70% 90%, var(--color-foam) 100%, transparent),
+    radial-gradient(2px 2px at 55% 15%, var(--color-cyan) 100%, transparent),
+    radial-gradient(2px 2px at 12% 88%, var(--color-pink) 100%, transparent),
+    radial-gradient(1.5px 1.5px at 38% 32%, var(--color-gold) 100%, transparent);
+  background-repeat: repeat;
+  background-size: 220px 220px;
+  animation: starfield-twinkle 3.5s ease-in-out infinite alternate,
+             starfield-drift 6s steps(1, jump-end) infinite;
+}
+
+@keyframes starfield-twinkle {
+  0% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+@keyframes starfield-drift {
+  0%   { background-position: 0px 0px; }
+  33%  { background-position: 70px 130px; }
+  66%  { background-position: 150px 40px; }
+  100% { background-position: 0px 0px; }
+}
+
+.boot-title {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  color: var(--color-foam);
+  text-shadow: var(--px-1) var(--px-1) 0 var(--color-twilight);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  transform: translateY(var(--px-4));
+  transition: opacity var(--t-slow) var(--ease-out), transform var(--t-slow) var(--ease-out);
+}
+
+.boot-title.boot-title-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.title-love {
+  color: var(--color-pink);
+  text-shadow: var(--px-1) var(--px-1) 0 var(--color-twilight), 0 0 var(--px-6) rgba(255, 111, 156, 0.5);
+}
+
+.title-quest {
+  color: var(--color-cyan);
+  text-shadow: var(--px-1) var(--px-1) 0 var(--color-twilight), 0 0 var(--px-6) rgba(94, 231, 255, 0.5);
+}
+
+@keyframes fadein-pixel {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.boot-subtitle {
+  position: relative;
+  z-index: var(--z-scene);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  margin-top: var(--px-2);
+  min-height: 1.2em;
+  opacity: 0;
+  animation: fadein-pixel 0.4s steps(3) 0.6s forwards;
+}
+
+.press-start {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  color: var(--color-gold);
+  margin-top: var(--px-8);
+  opacity: 0;
+  animation: press-start-blink 900ms steps(1) infinite;
+}
+
+.press-start.press-start-visible {
+  opacity: 1;
+}
+
+@keyframes press-start-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.15; }
+}
+
+.press-start:not(.press-start-visible) {
+  animation: none;
+  opacity: 0;
+}
+
+.boot-version {
+  position: absolute;
+  z-index: var(--z-scene);
+  bottom: var(--px-2);
+  right: var(--px-2);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  opacity: 0;
+  animation: fadein-pixel 0.4s steps(3) 0.9s forwards;
+}
+
+/* --- 6.2 Name reveal --- */
+/* Real image goes in assets/scenes/name-reveal.gif. */
+.name-reveal-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/name-reveal.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.name-reveal-text {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--color-ocean-deep);
+  letter-spacing: 0.08em;
+  min-height: 1.4em;
+}
+
+/* --- 6.4 Intro scene --- */
+/* Real image goes in assets/scenes/intro.gif. */
+.intro-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/intro.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.intro-stage {
+  position: relative;
+  z-index: var(--z-scene);
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 30vh;
+}
+
+/* Real sprite image is set inline via Assets.setBg() in boot.js —
+   this class only handles size, transform, and the walk-in animation. */
+.sprite-mudkip {
+  width: calc(var(--px-8) * 6);
+  height: calc(var(--px-8) * 6);
+  transform: translateX(-140%);
+  opacity: 0;
+}
+
+.sprite-mudkip.sprite-walk-in {
+  animation: sprite-walk-in 600ms var(--ease-pixel) forwards;
+}
+
+@keyframes sprite-walk-in {
+  0% { transform: translateX(-140%); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+/* ---------------------------------------------------------
+   7. WORLD MAP & HUD  (Chapter 3.1, 3.2)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/map.gif. */
+.map-bg {
+  position: absolute;
+  inset: var(--px-6);
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/map.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.map-locations {
+  position: relative;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--px-4);
+  justify-content: center;
+  align-content: center;
+  max-width: min(90vw, 700px);
+}
+
+.map-location {
+  padding: var(--px-2) var(--px-4);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  transition: transform var(--t-fast) var(--ease-hover), background var(--t-fast) var(--ease-hover);
+}
+
+.map-location:not(:disabled):focus-visible {
+  background: var(--color-accent-2);
+  transform: translateY(calc(var(--px-1) * -1));
+}
+
+/* Gated to real hover devices — on touch, :hover would otherwise stick
+   the lift/color change after a tap since there's no pointer to leave. */
+@media (hover: hover) and (pointer: fine) {
+  .map-location:not(:disabled):hover {
+    background: var(--color-accent-2);
+    transform: translateY(calc(var(--px-1) * -1));
+  }
+}
+
+.map-location.locked {
+  border-color: var(--color-text-dim);
+  color: var(--color-text-dim);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.hud {
+  position: absolute;
+  top: var(--px-2);
+  left: var(--px-2);
+  right: var(--px-2);
+  z-index: var(--z-hud);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--px-3);
+  padding: var(--px-2) var(--px-3);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hud.hidden {
+  display: none;
+}
+
+.hud-party {
+  display: flex;
+  align-items: center;
+  gap: var(--px-2);
+  flex: 1;
+  min-width: 0;
+}
+
+.hud-party-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-foam);
+  white-space: nowrap;
+}
+
+.hud-party-level {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+}
+
+.hud-xp-bar {
+  flex: 1;
+  max-width: 160px;
+  height: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hud-xp-fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: var(--color-gold);
+  transition: transform var(--t-med) var(--ease-smooth);
+}
+
+.hud-items {
+  display: flex;
+  gap: var(--px-1);
+}
+
+.hud-item-slot {
+  width: var(--px-6);
+  height: var(--px-6);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-text-dim);
+}
+
+.hud-item-slot.unlocked {
+  background: var(--color-gold);
+  border-color: var(--color-foam);
+}
+
+/* ---------------------------------------------------------
+   8. CHAPTER / MEMORY SCREEN  (Chapter 3.3)
+   --------------------------------------------------------- */
+/* Per-location image is set inline via Assets.setBg()/Assets.chapterBg()
+   in chapter.js (assets/scenes/chapters/<locationId>.gif) — this class
+   only handles the placeholder fallback color and sizing/position,
+   same convention as every other sprite/background set from JS. */
+.chapter-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.chapter-header {
+  position: absolute;
+  top: var(--px-6);
+  left: 0;
+  right: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-1);
+  text-align: center;
+}
+
+.chapter-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-gold);
+  letter-spacing: 0.1em;
+}
+
+.chapter-title {
+  font-size: var(--fs-lg);
+  color: var(--color-foam);
+  min-height: 1.2em;
+}
+
+.chapter-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--px-8);
+  padding-bottom: 32vh;
+}
+
+/* Real sprite image is set inline via Assets.setBg() in chapter.js
+   (the chapter's battle enemy, standing in as Lara's placeholder
+   until a dedicated Lara sprite exists) — this class only handles
+   size, matching the trainer art's proportions so it doesn't look
+   out of place next to the real NPC sprite. */
+.sprite-player {
+  position: relative;
+  width: calc(var(--px-8) * 3);
+  height: calc(var(--px-8) * 5.5);
+  transform: translateX(-140%);
+  opacity: 0;
+}
+
+.sprite-player.sprite-walk-in {
+  animation: sprite-walk-in 600ms var(--ease-pixel) forwards;
+}
+
+/* Real trainer image is set inline via Assets.setBg() in chapter.js —
+   this class only handles size, transform, and the walk-in animation. */
+.sprite-npc {
+  width: calc(var(--px-8) * 6);      /* was 3 → 128px */
+  height: calc(var(--px-8) * 10.995);  /* was 5.5 → ~234px, same aspect ratio */
+  transform: translateX(140%);
+  opacity: 0;
+}
+
+.sprite-npc.sprite-walk-in {
+  animation: sprite-walk-in-reverse 600ms var(--ease-pixel) forwards;
+}
+
+@keyframes sprite-walk-in-reverse {
+  0% { transform: translateX(140%); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+.memory-box {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-overlay);
+  width: min(88vw, 640px);
+  max-height: 70vh;
+  background: var(--color-panel);
+  padding: var(--px-4) var(--px-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-2);
+}
+
+.memory-box.hidden {
+  display: none;
+}
+
+.memory-chapter-label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-pink);
+  letter-spacing: 0.1em;
+}
+
+.memory-title {
+  font-size: var(--fs-md);
+  color: var(--color-foam);
+}
+
+.memory-text {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 4em;
+  line-height: 1.5;
+  color: var(--color-text);
+  padding-right: var(--px-1);
+}
+
+.memory-continue {
+  align-self: flex-end;
+  padding: var(--px-1) var(--px-3);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-pink);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+}
+
+.memory-continue:hover,
+.memory-continue:focus-visible {
+  background: var(--color-pink);
+  color: var(--color-ocean-deep);
+}
+
+/* ---------------------------------------------------------
+   9. ITEM-GET OVERLAY  (Chapter 3.6)
+   --------------------------------------------------------- */
+.item-get-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 29, 58, 0.85); /* var(--color-ocean-deep) at partial opacity */
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear 0s;
+}
+
+.item-get-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear var(--t-med);
+}
+
+.item-get-panel {
+  background: var(--color-panel);
+  padding: var(--px-6) var(--px-8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-2);
+  text-align: center;
+  max-width: min(80vw, 420px);
+  transform: scale(1);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.item-get-overlay.hidden .item-get-panel {
+  transform: scale(0.94); /* modal, so it's exempt from trigger-anchored origin — stays centered */
+}
+
+.item-get-emoji {
+  font-size: var(--fs-xl);
+  color: var(--color-gold);
+}
+
+.item-get-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-foam);
+  min-height: 1.2em;
+}
+
+.item-get-desc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  min-height: 1.4em;
+}
+
+.item-get-continue {
+  margin-top: var(--px-2);
+  padding: var(--px-1) var(--px-4);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+}
+
+.item-get-continue:hover,
+.item-get-continue:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-ocean-deep);
+}
+
+/* ---------------------------------------------------------
+   10. BATTLE SYSTEM  (Chapter 3.4)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/battle.gif. Used to be split into
+   .battle-sky/.battle-ground flex panes for the gradient horizon —
+   collapsed to one full-bleed layer since a real battle photo is a
+   single image, not two stacked colors. Nothing in battle.js reads
+   those two classes, so this is safe. */
+.battle-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/battle.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.battle-panel {
+  position: absolute;
+  z-index: var(--z-hud);
+  width: min(46vw, 260px);
+  background: var(--color-panel);
+  padding: var(--px-2) var(--px-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-1);
+}
+
+.battle-panel-enemy {
+  top: 12%;
+  left: var(--px-4);
+}
+
+.battle-panel-player {
+  bottom: 26%;
+  right: var(--px-4);
+}
+
+.battle-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-foam);
+}
+
+.battle-level {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+
+.hp-bar {
+  height: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+}
+
+.hp-fill {
+  height: 100%;
+  width: 100%;
+  transform: scaleX(1);
+  transform-origin: left center;
+  transition: transform var(--t-med) var(--ease-smooth), background var(--t-fast) var(--ease-hover);
+}
+
+.hp-fill.hp-high { background: var(--color-hp-high); }
+.hp-fill.hp-mid  { background: var(--color-hp-mid); }
+.hp-fill.hp-low  { background: var(--color-hp-low); }
+
+.battle-sprite-enemy,
+.battle-sprite-player {
+  position: relative;
+  z-index: var(--z-scene);
+  width: calc(var(--px-8) * 6);
+  height: calc(var(--px-8) * 6);
+}
+
+.battle-sprite-enemy {
+  position: absolute;
+  top: 28%;
+  right: 27%;
+}
+
+.battle-sprite-player {
+  position: absolute;
+  bottom: 20%;
+  left: 20%;
+}
+
+.sprite-hit {
+  animation: sprite-hit-flash 400ms steps(4);
+}
+
+@keyframes sprite-hit-flash {
+  0%, 100% { filter: none; }
+  25%, 75% { filter: brightness(2) saturate(0); }
+}
+
+.damage-pop {
+  position: absolute;
+  top: -1.5em;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-pink);
+  animation: damage-pop-float 700ms ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes damage-pop-float {
+  0% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -1.5em); }
+}
+
+.battle-log {
+  position: absolute;
+  z-index: var(--z-hud);
+  bottom: calc(var(--px-8) * 4);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  min-height: 1.4em;
+  text-align: center;
+}
+
+.battle-menu,
+.battle-submenu {
+  position: absolute;
+  bottom: var(--px-4);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-dialogue);
+  width: min(92vw, 420px);
+  background: var(--color-panel);
+  padding: var(--px-2);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--px-1);
+}
+
+.battle-menu.hidden,
+.battle-submenu.hidden {
+  display: none;
+}
+
+.battle-menu-btn {
+  padding: var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  text-align: center;
+}
+
+.battle-menu-btn:hover,
+.battle-menu-btn:focus-visible {
+  background: var(--color-accent-2);
+}
+
+.battle-submenu {
+  grid-template-columns: 1fr;
+}
+
+.battle-submenu-row,
+.battle-submenu-empty {
+  padding: var(--px-1) var(--px-2);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+
+.battle-submenu-back {
+  padding: var(--px-1) var(--px-2);
+  background: var(--color-ocean-deep);
+  color: var(--color-gold);
+  font-size: var(--fs-xs);
+  justify-self: end;
+}
+
+/* ---------------------------------------------------------
+   11. EVOLUTION SEQUENCE  (Chapter 3.5)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/evolution.gif. */
+.evolution-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/evolution.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.evolution-flash {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-transition);
+  background: var(--color-foam);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms linear;
+}
+
+.evolution-flash.evolution-flash-active {
+  opacity: 1;
+}
+
+.evolution-sprite {
+  position: relative;
+  z-index: var(--z-scene);
+  width: calc(var(--px-8) * 5);
+  height: calc(var(--px-8) * 5);
+  filter: drop-shadow(0 0 var(--px-4) var(--color-gold));
+}
+
+.evolution-sprite.evolution-sprite-reveal {
+  animation: evolution-reveal 500ms var(--ease-smooth);
+}
+
+@keyframes evolution-reveal {
+  0% { transform: scale(0.6); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.evolution-text {
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-gold);
+  text-align: center;
+  min-height: 1.4em;
+  width: min(90vw, 500px);
+}
+
+/* ---------------------------------------------------------
+   12. PIXEL SPRITES — enemies/trainers & party stages  (Chapter 3.7)
+   Real sprite art now lives under assets/sprites/ (see
+   assets/README.md). These classes only handle SIZE — the
+   actual image is set inline via Assets.setBg() in JS, since
+   the file path depends on data (dex number / trainer name),
+   not on a fixed CSS rule.
+   --------------------------------------------------------- */
+/* Extra-strong glow for the Mega Swampert reveal (Ch. 4.5) — layers on
+   top of the base glow above so that moment feels bigger. */
+.evolution-sprite.evolution-sprite-mega {
+  filter: drop-shadow(0 0 var(--px-6) var(--color-gold));
+}
+
+.battle-sprite-enemy,
+.battle-sprite-player {
+  animation: sprite-idle-float 1700ms ease-in-out infinite;
+}
+
+@keyframes sprite-idle-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(calc(var(--px-1) * -1.5)); }
+}
+
+
+/* ---------------------------------------------------------
+   13. QUIZ GATE  (Chapter 4.1, 4.2)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/quiz.gif. */
+.quiz-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/quiz.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.quiz-gate {
+  position: relative;
+  z-index: var(--z-scene);
+  width: min(90vw, 480px);
+  background: var(--color-panel);
+  padding: var(--px-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-3);
+  text-align: center;
+}
+
+.quiz-gate.quiz-gate-shake {
+  animation: quiz-shake 400ms var(--ease-pixel);
+}
+
+@keyframes quiz-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(calc(var(--px-1) * -2)); }
+  40% { transform: translateX(var(--px-2)); }
+  60% { transform: translateX(calc(var(--px-1) * -1)); }
+  80% { transform: translateX(var(--px-1)); }
+}
+
+.quiz-progress {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  color: var(--color-gold);
+  letter-spacing: 0.1em;
+}
+
+.quiz-inscription {
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  font-style: italic;
+  min-height: 2.4em;
+}
+
+.quiz-question {
+  font-size: var(--fs-md);
+  color: var(--color-foam);
+  min-height: 2em;
+}
+
+.quiz-answer-row {
+  display: flex;
+  gap: var(--px-2);
+}
+
+.quiz-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+}
+
+.quiz-input:focus-visible {
+  outline: var(--px-1) solid var(--color-gold);
+  outline-offset: var(--px-1);
+}
+
+.quiz-submit {
+  padding: var(--px-2) var(--px-3);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.quiz-submit:hover,
+.quiz-submit:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-ocean-deep);
+}
+
+.quiz-feedback {
+  font-size: var(--fs-sm);
+  min-height: 1.4em;
+}
+
+.quiz-feedback.quiz-feedback-correct {
+  color: var(--color-hp-high);
+}
+
+.quiz-feedback.quiz-feedback-wrong {
+  color: var(--color-hp-low);
+}
+
+/* ---------------------------------------------------------
+   14. MYSTERY REVEAL  (Chapter 4.3)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/mystery.gif. */
+.mystery-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/mystery.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.mystery-clues {
+  position: relative;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--px-2);
+  justify-content: center;
+  max-width: min(90vw, 600px);
+  margin-bottom: var(--px-6);
+}
+
+.mystery-clue-chip {
+  padding: var(--px-2) var(--px-3);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-foam);
+  font-size: var(--fs-sm);
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity var(--t-med) var(--ease-smooth), transform var(--t-med) var(--ease-smooth);
+}
+
+.mystery-clue-chip.mystery-clue-chip-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.mystery-text {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  color: var(--color-gold);
+  text-align: center;
+  min-height: 1.4em;
+  width: min(90vw, 500px);
+}
+
+/* ---------------------------------------------------------
+   15. LOVE LETTER  (Chapter 4.4)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/letter.gif. */
+.letter-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/letter.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+.letter-stage {
+  position: relative;
+  z-index: var(--z-scene);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--px-8);
+  width: 100%;
+  height: 100%;
+  padding: var(--px-6);
+  flex-wrap: wrap;
+}
+
+/* Real sprite image is set inline via Assets.setBg() in letter.js —
+   this class only handles size, same convention as every other sprite. */
+.letter-sprite {
+  width: calc(var(--px-8) * 4);
+  height: calc(var(--px-8) * 4);
+  flex-shrink: 0;
+}
+
+.letter-paper {
+  background: var(--color-foam);
+  color: var(--color-ocean-deep);
+  padding: var(--px-6);
+  width: min(80vw, 480px);
+  max-height: 70vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--px-3);
+}
+
+.letter-body {
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.letter-signoff {
+  align-self: flex-end;
+  font-style: italic;
+  font-size: var(--fs-md);
+}
+
+@media (max-width: 480px) {
+  .letter-stage {
+    flex-direction: column;
+    gap: var(--px-4);
+  }
+  .letter-paper {
+    width: 88vw;
+  }
+}
+
+/* ---------------------------------------------------------
+   16. FINALE & EASTER EGGS  (Chapter 4.5, 4.6)
+   --------------------------------------------------------- */
+/* Real image goes in assets/scenes/finale.gif. */
+.finale-bg {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bg);
+  background-color: var(--color-bg-placeholder);
+  background-image: url('../assets/scenes/finale.gif');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+}
+
+/* Real sprite image (the Mega Swampert sheet) is set inline via
+   Assets.setBg() in letter.js, once GameState.state.partyStage has
+   already advanced to 'mega-swampert' from the evolution reveal. */
+.finale-sprite {
+  position: relative;
+  z-index: var(--z-scene);
+  width: calc(var(--px-8) * 6);
+  height: calc(var(--px-8) * 6);
+  margin-bottom: var(--px-4);
+  filter: drop-shadow(0 0 var(--px-4) var(--color-gold));
+}
+
+.finale-reveal-text {
+  position: relative;
+  z-index: var(--z-scene);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  color: var(--color-gold);
+  text-align: center;
+  min-height: 1.6em;
+  width: min(90vw, 560px);
+  margin-bottom: var(--px-8);
+}
+
+.finale-easter-eggs {
+  position: absolute;
+  bottom: var(--px-6);
+  left: 0;
+  right: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  justify-content: center;
+  gap: var(--px-8);
+}
+
+/* Deliberately understated (low opacity, no label beyond aria-hidden
+   "???") — these are meant to be found, not advertised. */
+.easter-egg {
+  width: calc(var(--px-8) * 2);
+  height: calc(var(--px-8) * 2);
+  background: var(--color-panel);
+  border: var(--px-1) solid var(--color-text-dim);
+  opacity: 0.45;
+  transition: opacity var(--t-fast) var(--ease-hover), transform var(--t-fast) var(--ease-hover), border-color var(--t-fast) var(--ease-hover);
+}
+
+.easter-egg:focus-visible {
+  opacity: 1;
+  transform: translateY(calc(var(--px-1) * -1));
+  border-color: var(--color-gold);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .easter-egg:hover {
+    opacity: 1;
+    transform: translateY(calc(var(--px-1) * -1));
+    border-color: var(--color-gold);
+  }
+}
+
+/* ---------------------------------------------------------
+   17. SECRET OVERLAY  (shared by both Ch.4.6 easter eggs)
+   --------------------------------------------------------- */
+.secret-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 29, 58, 0.9); /* var(--color-ocean-deep) at partial opacity */
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear 0s;
+}
+
+.secret-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear var(--t-med);
+}
+
+.secret-panel {
+  background: var(--color-panel);
+  padding: var(--px-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-3);
+  text-align: center;
+  max-width: min(80vw, 420px);
+  transform: scale(1);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.secret-overlay.hidden .secret-panel {
+  transform: scale(0.94);
+}
+
+.secret-text {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  min-height: 1.4em;
+}
+
+.secret-link {
+  padding: var(--px-1) var(--px-3);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-pink);
+  color: var(--color-pink);
+  font-size: var(--fs-xs);
+  text-decoration: none;
+}
+
+.secret-link.hidden {
+  display: none;
+}
+
+.secret-continue {
+  padding: var(--px-1) var(--px-4);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-size: var(--fs-xs);
+}
+
+.secret-continue:hover,
+.secret-continue:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-ocean-deep);
+}

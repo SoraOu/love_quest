@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Love Quest</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="game-root">
+
+  <!-- Chapter 2.1 — Boot screen -->
+  <section class="scene" id="boot" data-scene="boot">
+    <div class="boot-bg" aria-hidden="true"></div>
+    <div class="starfield" aria-hidden="true"></div>
+    <h1 class="boot-title"><span class="title-love">LOVE</span> <span class="title-quest">QUEST</span></h1>
+    <p class="boot-subtitle"></p>
+    <p class="press-start">PRESS START</p>
+    <p class="boot-version"></p>
+  </section>
+
+  <!-- Chapter 2.2 — Name reveal -->
+  <section class="scene" id="name-reveal" data-scene="name-reveal">
+    <div class="name-reveal-bg" aria-hidden="true"></div>
+    <div class="name-reveal-text"></div>
+  </section>
+
+  <!-- Chapter 2.4 — Intro scene -->
+  <section class="scene" id="intro" data-scene="intro">
+    <div class="intro-bg" aria-hidden="true"></div>
+    <div class="intro-stage">
+      <div class="sprite sprite-mudkip" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 3.1 — World map -->
+  <section class="scene" id="map" data-scene="map">
+    <div class="map-bg pixel-border" aria-hidden="true"></div>
+    <div class="map-locations"></div>
+  </section>
+
+  <!-- Chapter 3.3 — Chapter / memory screen -->
+  <section class="scene" id="chapter" data-scene="chapter">
+    <div class="chapter-bg" aria-hidden="true"></div>
+    <div class="chapter-header">
+      <span class="chapter-label"></span>
+      <span class="chapter-title"></span>
+    </div>
+    <div class="chapter-stage">
+      <div class="sprite sprite-player" aria-hidden="true"></div>
+      <div class="sprite sprite-npc" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 3.4 — Battle -->
+  <section class="scene" id="battle" data-scene="battle">
+    <div class="battle-bg" aria-hidden="true"></div>
+
+    <div class="battle-panel battle-panel-enemy pixel-border">
+      <div class="battle-name"></div>
+      <div class="battle-level"></div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+    <div class="sprite battle-sprite-enemy" aria-hidden="true"></div>
+
+    <div class="sprite battle-sprite-player" aria-hidden="true"></div>
+    <div class="battle-panel battle-panel-player pixel-border">
+      <div class="battle-name"></div>
+      <div class="battle-level"></div>
+      <div class="hp-bar"><div class="hp-fill"></div></div>
+    </div>
+
+    <div class="battle-log"></div>
+
+    <div class="battle-menu pixel-border-gold">
+      <button type="button" class="battle-menu-btn" data-action="fight">FIGHT</button>
+      <button type="button" class="battle-menu-btn" data-action="item">ITEM</button>
+      <button type="button" class="battle-menu-btn" data-action="pokemon">POK&Eacute;MON</button>
+      <button type="button" class="battle-menu-btn" data-action="run">RUN</button>
+    </div>
+    <div class="battle-submenu pixel-border-gold hidden"></div>
+  </section>
+
+  <!-- Chapter 3.5 — Evolution sequence -->
+  <section class="scene" id="evolution" data-scene="evolution">
+    <div class="evolution-bg" aria-hidden="true"></div>
+    <div class="evolution-flash" aria-hidden="true"></div>
+    <div class="sprite evolution-sprite" aria-hidden="true"></div>
+    <div class="evolution-text"></div>
+  </section>
+
+  <!-- Chapter 4.1/4.2 — Quiz gate -->
+  <section class="scene" id="quiz" data-scene="quiz">
+    <div class="quiz-bg" aria-hidden="true"></div>
+    <div class="quiz-gate pixel-border-gold">
+      <div class="quiz-progress"></div>
+      <div class="quiz-inscription"></div>
+      <div class="quiz-question"></div>
+      <div class="quiz-answer-row">
+        <input type="text" class="quiz-input" autocomplete="off" aria-label="Your answer">
+        <button type="button" class="quiz-submit">SUBMIT</button>
+      </div>
+      <div class="quiz-feedback"></div>
+    </div>
+  </section>
+
+  <!-- Chapter 4.3 — Mystery reveal -->
+  <section class="scene" id="mystery-reveal" data-scene="mystery-reveal">
+    <div class="mystery-bg" aria-hidden="true"></div>
+    <div class="mystery-clues"></div>
+    <div class="mystery-text"></div>
+  </section>
+
+  <!-- Chapter 4.4 — Love letter -->
+  <section class="scene" id="letter" data-scene="letter">
+    <div class="letter-bg" aria-hidden="true"></div>
+    <div class="letter-stage">
+      <div class="sprite letter-sprite" aria-hidden="true"></div>
+      <div class="letter-paper pixel-border-pink">
+        <div class="letter-body"></div>
+        <div class="letter-signoff"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Chapter 4.5/4.6 — Final reveal + hidden easter eggs -->
+  <section class="scene" id="finale" data-scene="finale">
+    <div class="finale-bg" aria-hidden="true"></div>
+    <div class="sprite finale-sprite" aria-hidden="true"></div>
+    <div class="finale-reveal-text"></div>
+    <div class="finale-easter-eggs">
+      <button type="button" class="easter-egg easter-egg-bookshelf" aria-label="???"></button>
+      <button type="button" class="easter-egg easter-egg-poster" aria-label="???"></button>
+    </div>
+  </section>
+
+  <!--
+    Persistent HUD (Chapter 3.2). Shown from the map scene onward;
+    hidden once the Chapter 4 quiz/letter/finale flow begins (Quiz.start()).
+  -->
+  <div class="hud hidden">
+    <div class="hud-party">
+      <div class="hud-party-name"></div>
+      <div class="hud-party-level"></div>
+      <div class="hud-xp-bar"><div class="hud-xp-fill"></div></div>
+    </div>
+    <div class="hud-items">
+      <div class="hud-item-slot" data-slot="0"></div>
+      <div class="hud-item-slot" data-slot="1"></div>
+      <div class="hud-item-slot" data-slot="2"></div>
+      <div class="hud-item-slot" data-slot="3"></div>
+      <div class="hud-item-slot" data-slot="4"></div>
+    </div>
+  </div>
+
+  <!--
+    Memory box (Chapter 3.3) — a variant of the dialogue box that
+    stays open (scrollable) instead of typing line by line, since
+    memory text is meant to be re-readable, not paced.
+  -->
+  <div class="memory-box pixel-border-pink hidden">
+    <div class="memory-chapter-label"></div>
+    <div class="memory-title"></div>
+    <div class="memory-text"></div>
+    <button type="button" class="memory-continue">CONTINUE</button>
+  </div>
+
+  <!--
+    Item-get overlay (Chapter 3.6) — single reusable instance,
+    outside every scene, same pattern as the dialogue box.
+  -->
+  <div class="item-get-overlay hidden">
+    <div class="item-get-panel pixel-border-gold">
+      <div class="item-get-emoji"></div>
+      <div class="item-get-name"></div>
+      <div class="item-get-desc"></div>
+      <button type="button" class="item-get-continue">CONTINUE</button>
+    </div>
+  </div>
+
+  <!--
+    Secret overlay (Chapter 4.6) — shared by both hidden easter eggs
+    (bookshelf message, poster/playlist link), same reusable-overlay
+    pattern as item-get-overlay above.
+  -->
+  <div class="secret-overlay hidden">
+    <div class="secret-panel pixel-border-gold">
+      <div class="secret-text"></div>
+      <a class="secret-link hidden" target="_blank" rel="noopener noreferrer">OPEN PLAYLIST</a>
+      <button type="button" class="secret-continue">CLOSE</button>
+    </div>
+  </div>
+
+  <!--
+    THE single reusable dialogue box (Chapter 1.4 / 2.3).
+    Lives once, outside every .scene, positioned above whatever
+    scene is currently active. DialogueEngine.js shows/hides and
+    populates it — no scene ever gets its own copy of this markup.
+  -->
+  <div class="dialogue-box hidden">
+    <div class="dialogue-speaker"></div>
+    <div class="dialogue-text">
+      <span class="dialogue-text-content"></span><span class="dialogue-cursor"></span>
+    </div>
+    <button type="button" class="dialogue-continue" aria-label="Continue"></button>
+    <div class="dialogue-choices"></div>
+  </div>
+
+</div>
+
+<!-- Script order matters: data first, engines second, feature
+     modules third, wiring last. -->
+<script src="js/storyData.js"></script>
+<script src="js/assets.js"></script>
+<script src="js/sceneManager.js"></script>
+<script src="js/input.js"></script>
+<script src="js/dialogueEngine.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/boot.js"></script>
+<script src="js/map.js"></script>
+<script src="js/chapter.js"></script>
+<script src="js/battle.js"></script>
+<script src="js/evolution.js"></script>
+<script src="js/quiz.js"></script>
+<script src="js/letter.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
