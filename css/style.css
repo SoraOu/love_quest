@@ -279,9 +279,16 @@ a {
 .dialogue-speaker {
   font-family: var(--font-display);
   font-size: var(--fs-sm);
-  color: var(--color-accent);
+  color: var(--color-ocean-deep);
   letter-spacing: 0.05em;
-  min-height: 1em; /* reserves space even when empty */
+  align-self: flex-start; /* name tag, not full-width — sits top-left of the box */
+  background: var(--color-accent);
+  border: var(--px-1) solid var(--color-foam);
+  padding: var(--px-1) var(--px-3);
+}
+
+.dialogue-speaker:empty {
+  display: none; /* no tag shown for narrator-only lines with no speaker set */
 }
 
 .dialogue-text {
@@ -750,12 +757,14 @@ a {
   padding-bottom: 32vh;
 }
 
-/* Real sprite image is set inline via Assets.setBg() in chapter.js
-   (the chapter's battle enemy, standing in as Lara's placeholder
-   until a dedicated Lara sprite exists) — this class only handles
-   size, matching the trainer art's proportions so it doesn't look
-   out of place next to the real NPC sprite. */
-.sprite-player {
+/* This is the NPC's own Pokémon, standing beside them (repurposed
+   from an earlier Lara placeholder — hence the name change from the
+   old .sprite-player). Image is set inline via Assets.setBg() in
+   chapter.js. Width/height below are just the fallback: each chapter
+   can set its own size via StoryData.battle.enemies[n].chapterSpriteSize,
+   applied inline by Assets.setSize() so different species don't have
+   to share one fixed footprint. */
+.sprite-npc-pokemon {
   position: relative;
   width: calc(var(--px-8) * 3);
   height: calc(var(--px-8) * 5.5);
@@ -763,7 +772,7 @@ a {
   opacity: 0;
 }
 
-.sprite-player.sprite-walk-in {
+.sprite-npc-pokemon.sprite-walk-in {
   animation: sprite-walk-in 600ms var(--ease-pixel) forwards;
 }
 
@@ -967,7 +976,7 @@ a {
 }
 
 .hp-bar {
-  height: var(--px-2);
+  height: 15px;
   background: var(--color-ocean-deep);
   border: var(--px-1) solid var(--color-foam);
 }
@@ -1124,6 +1133,11 @@ a {
   opacity: 1;
 }
 
+/* Width/height here are just the fallback — each evolution stage can
+   set its own size via StoryData.assets.partyStageSprites[stage].size,
+   applied inline by Assets.setSize() in evolution.js, since mudkip/
+   marshtomp/swampert/mega-swampert sprite sheets don't all share one
+   aspect ratio. */
 .evolution-sprite {
   position: relative;
   z-index: var(--z-scene);
@@ -1557,6 +1571,106 @@ a {
 
 .secret-continue:hover,
 .secret-continue:focus-visible {
+  background: var(--color-gold);
+  color: var(--color-ocean-deep);
+}
+
+/* ---------------------------------------------------------
+   18. NICKNAME PROMPT  (Chapter 2.4 add-on)
+   Same reusable-overlay pattern as the item-get/secret
+   overlays above — shown once, right after the intro
+   dialogue, so the player can name their Mudkip partner.
+   That name then flows through GameState.partyLabel()
+   everywhere the party's display name shows (HUD, battle,
+   evolution announce text), and through
+   GameState.applyTemplate() anywhere a {mudkipName} token
+   appears in written dialogue/memory/item text.
+   --------------------------------------------------------- */
+.nickname-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(11, 29, 58, 0.9); /* var(--color-ocean-deep) at partial opacity */
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear 0s;
+}
+
+.nickname-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--t-med) var(--ease-out), visibility 0s linear var(--t-med);
+}
+
+.nickname-panel {
+  background: var(--color-panel);
+  padding: var(--px-6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--px-3);
+  text-align: center;
+  max-width: min(85vw, 380px);
+  transform: scale(1);
+  transition: transform var(--t-med) var(--ease-out);
+}
+
+.nickname-overlay.hidden .nickname-panel {
+  transform: scale(0.94);
+}
+
+.nickname-prompt {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  min-height: 1.4em;
+}
+
+.nickname-prompt:empty::before {
+  content: "Prompt goes here";
+  color: var(--color-text-dim);
+  font-style: italic;
+}
+
+.nickname-row {
+  display: flex;
+  gap: var(--px-2);
+  width: 100%;
+}
+
+.nickname-input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--px-2);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-foam);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  text-align: center;
+}
+
+.nickname-input:focus-visible {
+  outline: var(--px-1) solid var(--color-gold);
+  outline-offset: var(--px-1);
+}
+
+.nickname-confirm {
+  padding: var(--px-2) var(--px-3);
+  background: var(--color-ocean-deep);
+  border: var(--px-1) solid var(--color-gold);
+  color: var(--color-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+
+.nickname-confirm:hover,
+.nickname-confirm:focus-visible {
   background: var(--color-gold);
   color: var(--color-ocean-deep);
 }

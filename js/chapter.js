@@ -18,7 +18,7 @@
 const Chapter = (function () {
   'use strict';
 
-  let chapterBgEl, npcSpriteEl, playerSpriteEl, labelEl, titleEl;
+  let chapterBgEl, npcSpriteEl, npcPokemonSpriteEl, labelEl, titleEl;
   let memoryBoxEl, memoryLabelEl, memoryTitleEl, memoryTextEl, memoryContinueBtn;
   let itemOverlayEl, itemEmojiEl, itemNameEl, itemDescEl, itemContinueBtn;
 
@@ -28,7 +28,10 @@ const Chapter = (function () {
   function mount() {
     chapterBgEl = document.querySelector('#chapter .chapter-bg');
     npcSpriteEl = document.querySelector('#chapter .sprite-npc');
-    playerSpriteEl = document.querySelector('#chapter .sprite-player');
+    // This used to be a placeholder for Lara ("sprite-player") — it's
+    // since been repurposed to show the NPC's own Pokémon standing
+    // beside them, so the class/variable name now says what it is.
+    npcPokemonSpriteEl = document.querySelector('#chapter .sprite-npc-pokemon');
     labelEl = document.querySelector('#chapter .chapter-label');
     titleEl = document.querySelector('#chapter .chapter-title');
 
@@ -65,7 +68,7 @@ const Chapter = (function () {
     return new Promise((resolve) => {
       memoryLabelEl.textContent = `CHAPTER ${currentChapterData.id}`;
       memoryTitleEl.textContent = currentChapterData.title;
-      memoryTextEl.textContent = currentChapterData.memoryText;
+      memoryTextEl.textContent = GameState.applyTemplate(currentChapterData.memoryText);
       memoryBoxEl.classList.remove('hidden');
 
       function onContinue(e) {
@@ -115,8 +118,8 @@ const Chapter = (function () {
   function showItemGet() {
     return new Promise((resolve) => {
       itemEmojiEl.textContent = '\u2726'; // placeholder glyph until a real icon exists (Ch. 5.1)
-      itemNameEl.textContent = currentChapterData.itemName;
-      itemDescEl.textContent = currentChapterData.itemDesc;
+      itemNameEl.textContent = GameState.applyTemplate(currentChapterData.itemName);
+      itemDescEl.textContent = GameState.applyTemplate(currentChapterData.itemDesc);
       itemOverlayEl.classList.remove('hidden');
 
       function onContinue(e) {
@@ -153,15 +156,20 @@ const Chapter = (function () {
         // (chapter.id 1 -> enemies[0], etc. — same lookup battle.js uses).
         const enemyData = StoryData.battle.enemies[currentChapterData.id - 1];
         if (enemyData) {
-          Assets.setBg(playerSpriteEl, Assets.pokemonFront(enemyData.dex, enemyData.ext));
+          Assets.setBg(npcPokemonSpriteEl, Assets.pokemonFront(enemyData.dex, enemyData.ext));
+          // Each chapter's NPC Pokémon can have its own on-screen size
+          // (StoryData.battle.enemies[n].chapterSpriteSize) instead of
+          // every one sharing the .sprite-npc-pokemon CSS default —
+          // different species, different sprite-sheet proportions.
+          Assets.setSize(npcPokemonSpriteEl, enemyData.chapterSpriteSize);
         }
-        playerSpriteEl.classList.remove('sprite-walk-in');
+        npcPokemonSpriteEl.classList.remove('sprite-walk-in');
 
         // restart both walk-ins together each time the scene is entered
         void npcSpriteEl.offsetWidth;
-        void playerSpriteEl.offsetWidth;
+        void npcPokemonSpriteEl.offsetWidth;
         npcSpriteEl.classList.add('sprite-walk-in');
-        playerSpriteEl.classList.add('sprite-walk-in');
+        npcPokemonSpriteEl.classList.add('sprite-walk-in');
 
         const alreadyCompleted = GameState.state.completedChapterIds.includes(currentChapterData.id);
 

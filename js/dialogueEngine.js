@@ -16,10 +16,28 @@
       box markup into its own scene.
 
    Both read timing from one constant so the "typing speed"
-   feel is tuned in exactly one place.
+   feel is tuned in exactly one place, both resolve the
+   `{mudkipName}` token via GameState.applyTemplate() before
+   typing, and both play a soft blip (GameAudio.playSfx) on
+   every non-whitespace character so the two typewriters keep
+   sounding identical, not just looking identical.
    ========================================================= */
 
 const CHAR_MS = 28; // ms per character — shared by typeInto and DialogueEngine
+
+/** Plays the shared typewriter blip for one freshly-typed character, skipping whitespace so the cadence doesn't sound during natural pauses. */
+function playTypeBlip(char) {
+  if (char && char.trim() !== '' && window.GameAudio && typeof GameAudio.playSfx === 'function') {
+    GameAudio.playSfx('typewriter');
+  }
+}
+
+/** Resolves {mudkipName} (and any future tokens) before a string is typed out. Safe to call even if GameState isn't ready yet. */
+function resolveText(text) {
+  return (window.GameState && typeof GameState.applyTemplate === 'function')
+    ? GameState.applyTemplate(text)
+    : text;
+}
 
 /**
  * Types `text` into `el` one character at a time. Pressing
@@ -31,6 +49,7 @@ const CHAR_MS = 28; // ms per character — shared by typeInto and DialogueEngin
  */
 function typeInto(el, text, opts) {
   const speed = (opts && opts.speed) || CHAR_MS;
+  const resolved = resolveText(text);
   return new Promise((resolve) => {
     let i = 0;
     let typing = true;
@@ -39,7 +58,7 @@ function typeInto(el, text, opts) {
     function finish() {
       typing = false;
       window.clearTimeout(timer);
-      el.textContent = text;
+      el.textContent = resolved;
       Input.clearAdvanceHandler();
       resolve();
     }
@@ -47,8 +66,9 @@ function typeInto(el, text, opts) {
     function tick() {
       if (!typing) return;
       i++;
-      el.textContent = text.slice(0, i);
-      if (i >= text.length) {
+      el.textContent = resolved.slice(0, i);
+      playTypeBlip(resolved[i - 1]);
+      if (i >= resolved.length) {
         finish();
         return;
       }
@@ -101,6 +121,7 @@ const DialogueEngine = (function () {
 
   /** Types a single line into the shared dialogue box, resolves when the player advances past it. */
   function runLine(text) {
+    const resolved = resolveText(text);
     return new Promise((resolve) => {
       lineState = 'typing';
       let i = 0;
@@ -110,7 +131,7 @@ const DialogueEngine = (function () {
 
       function finishTyping() {
         window.clearTimeout(charTimer);
-        textEl.textContent = text;
+        textEl.textContent = resolved;
         cursorEl.style.display = 'none';
         continueEl.classList.add('visible');
         lineState = 'waiting';
@@ -119,8 +140,9 @@ const DialogueEngine = (function () {
       function tick() {
         if (lineState !== 'typing') return;
         i++;
-        textEl.textContent = text.slice(0, i);
-        if (i >= text.length) {
+        textEl.textContent = resolved.slice(0, i);
+        playTypeBlip(resolved[i - 1]);
+        if (i >= resolved.length) {
           finishTyping();
           return;
         }

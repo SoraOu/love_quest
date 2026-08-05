@@ -36,11 +36,15 @@ const StoryData = {
     // Party evolution stage -> sprite lookup. Mega Swampert has no back
     // sprite (it never appears in battle — only in the Ch.4.5 reveal),
     // so `sheet: true` skips the dex-based lookup for that stage.
+    // `size` (width/height in px) controls how big that stage renders
+    // in the evolution scene ONLY — set independently per stage since
+    // sprite sheets don't all share one aspect ratio. Omit/remove a
+    // stage's `size` to fall back to the .evolution-sprite CSS default.
     partyStageSprites: {
-      mudkip:          { dex: 258, ext: "gif" },
-      marshtomp:        { dex: 259, ext: "gif" },
-      swampert:         { dex: 260, ext: "gif" },
-      "mega-swampert":  { sheet: true },
+      mudkip:          { dex: 258, ext: "gif", size: { width: 160, height: 160 } },
+      marshtomp:        { dex: 259, ext: "gif", size: { width: 160, height: 160 } },
+      swampert:         { dex: 260, ext: "gif", size: { width: 320, height: 320 } },
+      "mega-swampert":  { sheet: true, size: { width: 420, height: 420 } },
     },
   },
 
@@ -67,9 +71,20 @@ const StoryData = {
       "Is that weird enough?",
       "Now that I got yor attention, I need you to help me get to the root of all this.",
       "You have no choice, youre stuck with me now mwehehehhehe",
-      "Shall we?"
+      "And why don't you give me a nickname if you want.",
+      " After that we'll go!"
     ],   // full array if more than one line is needed
     nameRevealText: "Lara!",   // text shown as "Lara" types out letter-by-letter
+    // Shown in the nickname-prompt overlay right after the opening
+    // lines finish (boot.js). Whatever the player types becomes
+    // GameState.partyLabel() everywhere the party's name shows (HUD,
+    // battle panels, evolution text) and fills in any {mudkipName}
+    // token used elsewhere in written dialogue/memory/item text.
+    nicknamePrompt: "",
+    // Fallback name used if the player confirms with the field left
+    // blank. Pre-filled like the map location names — a sensible
+    // default you can keep or change, not "her text."
+    nicknameDefault: "Mudkip",
   },
 
   // -------------------------------------------------------
@@ -102,6 +117,13 @@ const StoryData = {
   //           chapters 2/4 (which trigger evolution) from re-firing
   //           that sequence on a second visit.
   // itemName/itemDesc: shown on the item-get screen (3.6).
+  //
+  // Any line in dialogue/postBattleDialogue/revisitDialogue/memoryText/
+  // itemName/itemDesc (and letter.body/signOff, evolution announceText,
+  // mysteryReveal.assembleText) can include the token {mudkipName} —
+  // it's swapped for whatever the player nicknamed their Mudkip before
+  // the line is shown. e.g. "Careful, {mudkipName}!" ->
+  // "Careful, Sparky!"
   // -------------------------------------------------------
   chapters: [
     {
@@ -110,7 +132,7 @@ const StoryData = {
       npcSprite: "backpacker",
       title: "",
       location: "",
-      npc: "",
+      npc: "Jonathan Dimagiba",
       dialogue: [
         "Dang it! I'm lost.",
         "First I got separated from the group and now I'm stuck on this village.",
@@ -124,14 +146,21 @@ const StoryData = {
         "Of course you're not.",
         "*sighs*",
         "You know what? I'm bored. Let's have a battle to pass time.",
-        "You win and you get this uhhhh...\nI don't know what this is...",
-        "Seems cool so...",
+        "You win and you get this uhhhh...\nYou'll know once you've won...",
+        "uhh...so yeah...",
         "Let's just fight already!"
       ],
       memoryText: "You saw a guy who seems to be lost. He challenged you to a pokemon battle to pass time but what's the importance of this? Maybe it's for the plot. Or maybe it's not important at all.",
-      postBattleDialogue: [""],
-      itemName: "Item Name",
-      itemDesc: "Item Description",
+      postBattleDialogue: [
+        "Here, take this. I found it on a swamp somewhere when I was on my way here.",
+        "I gotta find that Khaecy woman now.",
+        "You sure you don't know her?"],
+      revisitDialogue: [
+        "Now where she?",
+        "Maybe I should just ask another person if they know someone named Khaecy."
+      ],
+      itemName: "Honor X9d",
+      itemDesc: "It's a smartphone. Unfortunately, it's locked and you don't know the password. \nAt least you got a new phone.",
     },
     {
       id: 2,
@@ -139,13 +168,30 @@ const StoryData = {
       npcSprite: "hexmaniac-gen3",
       title: "",
       location: "",
-      npc: "",
-      dialogue: [""],
+      npc: "Cathy K. Fiko",
+      dialogue: [
+        "Who goes there?",
+        "Just a kid. What'd you say your name was?",
+        "...",
+        "Interesting. \nI think I heard your name from somewhere but I don't remember.",
+        "This place have done a lot to me you know.",
+        "Add it to what's happening around right now.",
+        "Talking pokemons, impeachment trials, and earlier today,\n I heard some story about a guy looking for some beautiful woman.",
+        "He even left this umbrella because he's on a rush.",
+        "It's getting cloudy, it might rain anytime soon. \nHow about we battle and if you win,\nyou get this umbrella.",
+        "And if I win, you give me that Mudkip."
+      ],
       memoryText: "",
-      postBattleDialogue: [""],
-      revisitDialogue: [""],
-      itemName: "",
-      itemDesc: "",
+      postBattleDialogue: [
+        "Buwaka ng shemay!",
+        "Your Mudkip evolved.",
+        "I'm no longer interested anyways.",
+        "Here's your umbrella.",
+        "Take care out there."
+      ],
+      revisitDialogue: ["Maybe I shouldn't have gave that umbrella away."],
+      itemName: "Black Umbrella",
+      itemDesc: "A black umbrella. \nOn the handle, you can see initials that says J.L.",
     },
     {
       id: 3,
@@ -185,11 +231,19 @@ const StoryData = {
     // One real Pokémon per chapter, matched 1:1 by array position to
     // StoryData.chapters (chapter 1 -> enemies[0], etc). dex/ext point
     // at assets/sprites/pokemon/front/<dex>.<ext>.
+    //
+    // chapterSpriteSize (width/height in px) controls how big this
+    // Pokémon renders standing beside its trainer on the chapter/
+    // memory screen ONLY — the actual battle-scene sprite size is
+    // untouched (still the shared .battle-sprite-enemy CSS size).
+    // Set independently per chapter since sprite sheets vary. Omit/
+    // remove a chapter's chapterSpriteSize to fall back to the
+    // .sprite-npc-pokemon CSS default.
     enemies: [
-      { id: "sunflora",   name: "Sunflora",   dex: 192, ext: "gif", introLine: "" }, // Ch.1 — Lamoria Town
-      { id: "noctowl",    name: "Noctowl",    dex: 164, ext: "gif", introLine: "" }, // Ch.2 — Whisper Clearing
-      { id: "dusknoir",   name: "Dusknoir",   dex: 477, ext: "gif", introLine: "" }, // Ch.3 — Arcade Ruins
-      { id: "roggenrola", name: "Roggenrola", dex: 524, ext: "gif", introLine: "" }, // Ch.4 — Echo Cave
+      { id: "sunflora",   name: "Sunflora",   dex: 192, ext: "gif", introLine: "", chapterSpriteSize: { width: 96, height: 176 } }, // Ch.1 — Lamoria Town
+      { id: "noctowl",    name: "Noctowl",    dex: 164, ext: "gif", introLine: "", chapterSpriteSize: { width: 96, height: 176 } }, // Ch.2 — Whisper Clearing
+      { id: "dusknoir",   name: "Dusknoir",   dex: 477, ext: "gif", introLine: "", chapterSpriteSize: { width: 216, height: 396 } }, // Ch.3 — Arcade Ruins
+      { id: "roggenrola", name: "Roggenrola", dex: 524, ext: "gif", introLine: "", chapterSpriteSize: { width: 96, height: 176 } }, // Ch.4 — Echo Cave
     ],
     moveNames: [""],       // Mudkip/Marshtomp/Swampert move labels, if custom
     victoryLine: "",

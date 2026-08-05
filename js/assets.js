@@ -57,12 +57,43 @@ const Assets = (function () {
     return pokemonBack(info.dex, info.ext);
   }
 
+  /**
+   * Explicit on-screen size for a given evolution stage's sprite in the
+   * evolution scene (StoryData.assets.partyStageSprites[stage].size),
+   * so mudkip/marshtomp/swampert/mega-swampert can each be sized
+   * independently instead of sharing one fixed `.evolution-sprite`
+   * size. Returns null if that stage has no size configured, so the
+   * caller can fall back to the CSS default via setSize(el, null).
+   */
+  function partyFrontSize(stage) {
+    const info = cfg.partyStageSprites[stage];
+    return (info && info.size) ? info.size : null;
+  }
+
   /** Sets (or clears, if url is falsy) an element's background-image. */
   function setBg(el, url) {
     if (!el) return;
     el.style.backgroundImage = url ? `url('${url}')` : 'none';
   }
 
-  return { pokemonFront, pokemonBack, trainer, chapterBg, dialogueBox, megaSwampertSheet, partyFront, partyBack, setBg };
+  /**
+   * Sets (or clears, if size/width/height is missing) an element's
+   * explicit pixel width/height. Lets per-chapter or per-stage sprite
+   * art use independent sizes instead of one shared CSS size — falls
+   * back to whatever size the element's CSS class already defines
+   * when `size` is null/undefined.
+   * @param {HTMLElement} el
+   * @param {{ width?: number, height?: number }|null|undefined} size
+   */
+  function setSize(el, size) {
+    if (!el) return;
+    el.style.width = (size && size.width) ? `${size.width}px` : '';
+    el.style.height = (size && size.height) ? `${size.height}px` : '';
+  }
+
+  return {
+    pokemonFront, pokemonBack, trainer, chapterBg, dialogueBox, megaSwampertSheet,
+    partyFront, partyBack, partyFrontSize, setBg, setSize,
+  };
 })();
 window.Assets = Assets;

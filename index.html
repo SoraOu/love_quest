@@ -53,7 +53,7 @@
       <span class="chapter-title"></span>
     </div>
     <div class="chapter-stage">
-      <div class="sprite sprite-player" aria-hidden="true"></div>
+      <div class="sprite sprite-npc-pokemon" aria-hidden="true"></div>
       <div class="sprite sprite-npc" aria-hidden="true"></div>
     </div>
   </section>
@@ -194,6 +194,24 @@
       <div class="secret-text"></div>
       <a class="secret-link hidden" target="_blank" rel="noopener noreferrer">OPEN PLAYLIST</a>
       <button type="button" class="secret-continue">CLOSE</button>
+    </div>
+  </div>
+
+  <!--
+    Nickname prompt (Chapter 2.4 add-on) — shown once, right after the
+    intro dialogue, so the player can name their Mudkip partner. Same
+    reusable-overlay pattern as item-get-overlay/secret-overlay above.
+    boot.js shows/hides and reads this; the name it captures flows
+    through GameState.partyLabel() (HUD, battle, evolution text) and
+    GameState.applyTemplate() ({mudkipName} in written dialogue).
+  -->
+  <div class="nickname-overlay hidden">
+    <div class="nickname-panel pixel-border-gold">
+      <div class="nickname-prompt"></div>
+      <div class="nickname-row">
+        <input type="text" class="nickname-input" autocomplete="off" maxlength="12" aria-label="Nickname for your Mudkip">
+        <button type="button" class="nickname-confirm">OK</button>
+      </div>
     </div>
   </div>
 

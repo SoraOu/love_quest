@@ -29,5 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
   ['boot', 'name-reveal', 'intro', 'map', 'chapter', 'evolution', 'quiz', 'mystery-reveal', 'finale']
     .forEach((sceneId) => GameAudio.registerTrack(sceneId, 'assets/music/overall.mp3'));
 
+  // --- SFX -------------------------------------------------------------
+  // One soft blip per typed character, shared by both typewriter paths
+  // in dialogueEngine.js. Drop the file into assets/sfx/ with this exact
+  // name and it'll just start working — same "safe to register before
+  // the file exists" convention as the music tracks above.
+  GameAudio.registerSfx('typewriter', 'assets/sfx/typewriter-blip.mp3', { volume: 0.35 });
+
   SceneManager.go('boot');
 });

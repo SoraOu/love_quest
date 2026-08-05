@@ -1,12 +1,14 @@
 /* =========================================================
    LOVE QUEST — boot.js
    Owns the whole opening sequence: boot screen (2.1) ->
-   name reveal (2.2) -> intro dialogue (2.4). These three
-   scenes are one continuous flow with no game-state of their
-   own to track elsewhere, so they share this one file rather
-   than getting three separate modules.
+   name reveal (2.2) -> intro dialogue (2.4) -> nickname
+   prompt (2.4 add-on). These four beats are one continuous
+   flow with no game-state of their own to track elsewhere
+   (besides the nickname, handed straight to GameState), so
+   they share this one file rather than getting separate
+   modules.
 
-   Chapter 3's map.js takes over once the intro dialogue ends.
+   Chapter 3's map.js takes over once the nickname is set.
    ========================================================= */
 
 const Boot = (function () {
@@ -21,6 +23,7 @@ const Boot = (function () {
   let titleEl, subtitleEl, pressStartEl, versionEl;
   let nameRevealEl;
   let mudkipEl;
+  let nicknameOverlayEl, nicknamePromptEl, nicknameInputEl, nicknameConfirmBtn;
 
   function queryElements() {
     titleEl = document.querySelector('#boot .boot-title');
@@ -29,6 +32,16 @@ const Boot = (function () {
     versionEl = document.querySelector('#boot .boot-version');
     nameRevealEl = document.querySelector('#name-reveal .name-reveal-text');
     mudkipEl = document.querySelector('#intro .sprite-mudkip');
+
+    nicknameOverlayEl = document.querySelector('.nickname-overlay');
+    nicknamePromptEl = nicknameOverlayEl.querySelector('.nickname-prompt');
+    nicknameInputEl = nicknameOverlayEl.querySelector('.nickname-input');
+    nicknameConfirmBtn = nicknameOverlayEl.querySelector('.nickname-confirm');
+
+    // Same reasoning as quiz.js's input: typing/clicking in the field
+    // (including pressing Enter) shouldn't also fall through to
+    // input.js's document-level "any click/Enter = advance" fallback.
+    nicknameInputEl.addEventListener('click', (e) => e.stopPropagation());
   }
 
   function wait(ms) {
@@ -103,6 +116,47 @@ const Boot = (function () {
     });
   }
 
+  /**
+   * Chapter 2.4 add-on — asks the player to nickname their Mudkip
+   * partner right after the intro dialogue finishes. Same reusable-
+   * overlay pattern as the item-get/secret overlays. Resolves with
+   * the trimmed name the player typed, or StoryData.intro.nicknameDefault
+   * if they confirm with the field left blank.
+   * @returns {Promise<string>}
+   */
+  function promptNickname() {
+    return new Promise((resolve) => {
+      nicknamePromptEl.textContent = StoryData.intro.nicknamePrompt;
+      nicknameInputEl.value = '';
+      nicknameOverlayEl.classList.remove('hidden');
+      nicknameInputEl.focus();
+
+      function finish() {
+        const typed = nicknameInputEl.value.trim();
+        nicknameOverlayEl.classList.add('hidden');
+        nicknameConfirmBtn.removeEventListener('click', onConfirmClick);
+        nicknameInputEl.removeEventListener('keydown', onKeydown);
+        resolve(typed || StoryData.intro.nicknameDefault);
+      }
+
+      function onConfirmClick(e) {
+        e.stopPropagation();
+        finish();
+      }
+
+      function onKeydown(e) {
+        e.stopPropagation();
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finish();
+        }
+      }
+
+      nicknameConfirmBtn.addEventListener('click', onConfirmClick);
+      nicknameInputEl.addEventListener('keydown', onKeydown);
+    });
+  }
+
   // --- Scene: intro --------------------------------------------------
   function registerIntroScene() {
     SceneManager.register('intro', {
@@ -124,6 +178,9 @@ const Boot = (function () {
           speaker: 'MUDKIP',
           lines,
         });
+
+        const nickname = await promptNickname();
+        GameState.setNickname(nickname);
 
         // Hand off to the world map now that Chapter 3's map.js is wired up.
         SceneManager.go('map');

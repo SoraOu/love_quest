@@ -7,7 +7,8 @@
 
    1. GameState — the single source of truth for how far the
       player has gotten (unlocked locations, party evolution
-      stage, level/XP, which of the 5 items are collected).
+      stage, level/XP, which of the 5 items are collected, and
+      the nickname the player gave their Mudkip partner).
    2. HUD — the persistent party/item panel shown during
       map, chapter, and battle scenes.
    3. Map — the world map screen itself (Chapter 3.1).
@@ -33,6 +34,10 @@ const GameState = (function () {
     partyXpToNext: 100,
     // 5 slots total: one per chapter (4) + one tied to the Ch.4 letter/reveal sequence
     itemsUnlocked: [false, false, false, false, false],
+    // Set once via Boot's nickname prompt, right after the intro
+    // dialogue. In-memory only for the session — no localStorage,
+    // per project rules.
+    mudkipNickname: '',
   };
 
   function isUnlocked(locationId) {
@@ -73,11 +78,49 @@ const GameState = (function () {
     return false;
   }
 
-  function partyLabel() {
-    return STAGE_LABEL[state.partyStage];
+  /**
+   * Stores the nickname the player gave their Mudkip partner
+   * (Boot's post-intro nickname prompt). Called once; safe to call
+   * again if that ever changes. Blank/whitespace-only input is
+   * treated as "no nickname" so partyLabel() falls back to the
+   * species label instead of showing an empty name everywhere.
+   * @param {string} name
+   */
+  function setNickname(name) {
+    state.mudkipNickname = (name || '').trim();
   }
 
-  return { state, isUnlocked, unlockLocation, completeChapter, evolve, partyLabel, STAGE_ORDER };
+  /** The display name used in the HUD, battle panels, and evolution
+   * text — the player's chosen nickname once set, otherwise the
+   * current evolution stage's species label (e.g. "MUDKIP"). */
+  function partyLabel() {
+    return state.mudkipNickname || STAGE_LABEL[state.partyStage];
+  }
+
+  /**
+   * Resolves the `{mudkipName}` token in any piece of written text
+   * (dialogue lines, memory text, item name/desc, letter body, etc.)
+   * to the current partyLabel(). Non-string input passes through
+   * unchanged so callers can use it defensively without extra checks.
+   * @param {string} text
+   * @returns {string}
+   */
+  function applyTemplate(text) {
+    if (typeof text !== 'string') return text;
+    return text.replace(/\{mudkipName\}/g, partyLabel());
+  }
+
+  return {
+    state,
+    isUnlocked,
+    unlockLocation,
+    completeChapter,
+    evolve,
+    setNickname,
+    partyLabel,
+    applyTemplate,
+    STAGE_ORDER,
+  };
 })();
 window.GameState = GameState;
 

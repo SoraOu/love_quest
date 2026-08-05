@@ -57,6 +57,10 @@ const Evolution = (function () {
         // Before sprite: current stage, static.
         spriteEl.className = 'sprite evolution-sprite';
         Assets.setBg(spriteEl, Assets.partyFront(GameState.state.partyStage));
+        // Each evolution stage can have its own on-screen size
+        // (StoryData.assets.partyStageSprites[stage].size) instead of
+        // every stage sharing the .evolution-sprite CSS default.
+        Assets.setSize(spriteEl, Assets.partyFrontSize(GameState.state.partyStage));
         textEl.textContent = '';
         flashEl.classList.remove('evolution-flash-active');
 
@@ -68,6 +72,7 @@ const Evolution = (function () {
 
         // After sprite: new stage, revealed once the flash covers the swap.
         Assets.setBg(spriteEl, Assets.partyFront(GameState.state.partyStage));
+        Assets.setSize(spriteEl, Assets.partyFrontSize(GameState.state.partyStage));
         spriteEl.classList.add('evolution-sprite-reveal');
         if (isFinal) spriteEl.classList.add('evolution-sprite-mega');
 
