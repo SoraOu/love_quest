@@ -181,7 +181,7 @@ const StoryData = {
         "It's getting cloudy, it might rain anytime soon. \nHow about we battle and if you win,\nyou get this umbrella.",
         "And if I win, you give me that Mudkip."
       ],
-      memoryText: "",
+      memoryText: "You saw a woman who seems a bit weird. She challenged you on a pokemon battle.\n That umbrella in her hand though seems familiar to you though.",
       postBattleDialogue: [
         "Buwaka ng shemay!",
         "Your Mudkip evolved.",
@@ -199,13 +199,37 @@ const StoryData = {
       npcSprite: "collector",
       title: "",
       location: "",
-      npc: "",
-      dialogue: [""],
-      memoryText: "",
-      postBattleDialogue: [""],
-      revisitDialogue: [""],
-      itemName: "",
-      itemDesc: "",
+      npc: "Sora?",
+      dialogue: [
+        "Oh hello fellow trainer.",
+        "I am Sora, a gamer who knows no bounds when it comes to greatness.",
+        "Yes I'm the mighty-",
+        "What? I don't look like someone named Sora?",
+        "Fine fine you got me. ",
+        "I just saw this guy who seem kinda cool.",
+        "What was he doing?",
+        "Well he was just sitting on that corner over there and he kind of seems like counting mosquitoes?",
+        "I'm not crazy!\nI even approached him and he asked me if theres mosquitoes in my direction.",
+        "Why did he seem so cool?",
+        "Well I saw him playing some game and he\n and he's on that bird hero he's using.",
+        "Gosh I wanna be like him.",
+        "Let's battle, I'll show I can be as good as him!"
+      ],
+      memoryText: "A guy named Sora challenged you to a pokemon battle. You don't know why but that name sounds familiar to you.",
+      postBattleDialogue: ["I commend you on your greatness.",
+        "Here take this.",
+        "You deserve it.",
+        "That Sora guy told me to give this to the person who defeats me on a pokemon battle.,
+        "It was as if he knew that's going to happen.",
+        "What is he? A fortune teller?",
+        "Or maybe he actually created this world and we are both in a simulation or some kind of game\nwhere he wrote everything I'm saying here to convey his feelings to a certain person in a way he can express himself\nand the person receiving this will most likely enjoy this type of art, scene, or form of message because he knows\nthat person very well.",
+        "...",
+        "...",
+        "Or maybe he's a fortune teller"
+      ],
+      revisitDialogue: ["Hmmm, so the game he was playing was called Mobile Legends."],
+      itemName: "Sisig",
+      itemDesc: "There a note on this food pack which says 'Eat this. You must have come a long way to reach this far.\nContinue on and you'll eventually reach the end.'",
     },
     {
       id: 4,
@@ -213,13 +237,31 @@ const StoryData = {
       npcSprite: "hiker",
       title: "",
       location: "",
-      npc: "",
-      dialogue: [""],
-      memoryText: "",
-      postBattleDialogue: [""],
-      revisitDialogue: [""],
-      itemName: "",
-      itemDesc: "",
+      npc: "Prospector John",
+      dialogue: [
+        "I used to play Roblox.",
+        "And in roblox, I played this game called Prospecting.",
+        "You pan water for minerals and oh was it fun.",
+        "Have you played that?",
+        "Oh you did?",
+        "Dang. That dude was right.",
+        "He told me that a girl would come by and she will know the Prospecting game I was talking about.",
+        "He also told me to give this to you...",
+        "But I don't want to now.",
+        "Maybe I should just run away with this.",
+        "Wait wait what are you doing??",
+        "I don't want to battle!",
+        "AHHHHHHHHHHHH!!"
+      ],
+      memoryText: "This guy wanted to run away with the thing a certain person told him to give to you\nso you challenged him on a pokemon battle.",
+      postBattleDialogue: [
+        "Dang it!",
+        "Here! Take it!",
+        "I don't want it anymore"
+      ],
+      revisitDialogue: ["It looked yummy too. \n*sigh*"],
+      itemName: "Mango Graham",
+      itemDesc: "A meal is not complete without desert...\nDessert? Desertt?\nBasta yung panghimagas.",
     },
   ],
 
@@ -253,20 +295,20 @@ const StoryData = {
   // Evolution sequences (Chapter 3.5)
   // -------------------------------------------------------
   evolution: {
-    mudkipToMarshtomp: { announceText: "" },
-    marshtompToSwampert: { announceText: "" },
-    swampertToMega: { announceText: "" }, // tied to Chapter 4 letter/reveal
+    mudkipToMarshtomp: { announceText: "Your Mudkip Evolved into Marshtomp!" },
+    marshtompToSwampert: { announceText: "Your Marshtomop Evolved into Swampert!" },
+    swampertToMega: { announceText: "Woah! What the helly a Mega Evolution!" }, // tied to Chapter 4 letter/reveal
   },
 
   // -------------------------------------------------------
   // Quiz gate (Chapter 4.1, 4.2) — 5 clues total.
   // -------------------------------------------------------
   quiz: {
-    inscription: "",
+    inscription: "Inscription",
     clues: [
-      { question: "question", answer: "answer" },
-      { question: "question", answer: "answer" },
-      { question: "question", answer: "answer" },
+      { question: "Who is her main hero in Mobile Legends?", answer: "Zetian" },
+      { question: "What is her favorite food?", answer: "Sisig" },
+      { question: "What is the date today?", answer: "August 10" },
       { question: "question", answer: "answer" },
       { question: "question", answer: "answer" },
     ],
