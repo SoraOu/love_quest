@@ -25,11 +25,9 @@
 
 const CHAR_MS = 28; // ms per character — shared by typeInto and DialogueEngine
 
-/** Plays the shared typewriter blip for one freshly-typed character, skipping whitespace so the cadence doesn't sound during natural pauses. */
+/** Typewriter blip disabled — kept as a no-op so call sites don't need to change. */
 function playTypeBlip(char) {
-  if (char && char.trim() !== '' && window.GameAudio && typeof GameAudio.playSfx === 'function') {
-    GameAudio.playSfx('typewriter');
-  }
+  // no-op: typing sound effect removed
 }
 
 /** Resolves {mudkipName} (and any future tokens) before a string is typed out. Safe to call even if GameState isn't ready yet. */

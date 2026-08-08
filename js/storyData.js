@@ -219,7 +219,7 @@ const StoryData = {
       postBattleDialogue: ["I commend you on your greatness.",
         "Here take this.",
         "You deserve it.",
-        "That Sora guy told me to give this to the person who defeats me on a pokemon battle.,
+        "That Sora guy told me to give this to the person who defeats me on a pokemon battle.",
         "It was as if he knew that's going to happen.",
         "What is he? A fortune teller?",
         "Or maybe he actually created this world and we are both in a simulation or some kind of game\nwhere he wrote everything I'm saying here to convey his feelings to a certain person in a way he can express himself\nand the person receiving this will most likely enjoy this type of art, scene, or form of message because he knows\nthat person very well.",
