@@ -162,7 +162,7 @@ const Letter = (function () {
     finaleViewToggleBtn.disabled = true;
 
     if (!showingPhoto && !photoRendered) {
-      const ok = await PixelPhoto.render(finalePhotoEl, Assets.portraitImg());
+      const ok = await PixelPhoto.render(finalePhotoEl, Assets.portraitImg(), { targetWidth: 400 });
       if (!ok) {
         // Photo hasn't been dropped into assets/portrait.jpg yet — nothing
         // to switch to, leave the ascii art up.
