@@ -135,12 +135,16 @@
 
     <div class="finale-reveal-text"></div>
 
-    <!-- Centerpiece — static ASCII art (js/asciiArt.js), flashed in and
-         wrapped in a border. Built by Letter.runFinale(). -->
+    <!-- Centerpiece — static ASCII art (js/asciiArt.js) by default, with
+         a toggle button (js/letter.js) that flash-swaps it for a lightly
+         pixelated render of the real photo (js/pixelPhoto.js) instead. -->
     <div class="finale-ascii-frame pixel-border-gold">
       <pre class="finale-ascii"></pre>
+      <canvas class="finale-photo hidden"></canvas>
       <div class="finale-ascii-flash" aria-hidden="true"></div>
     </div>
+
+    <button type="button" class="finale-view-toggle">VIEW PHOTO</button>
 
     <!-- Every Pokémon sprite from the journey, lined up along the
          bottom, with the Mudkip->Marshtomp->Swampert->Mega Swampert
@@ -255,6 +259,7 @@
 <script src="js/assets.js"></script>
 <script src="js/textArt.js"></script>
 <script src="js/asciiArt.js"></script>
+<script src="js/pixelPhoto.js"></script>
 <script src="js/sceneManager.js"></script>
 <script src="js/input.js"></script>
 <script src="js/dialogueEngine.js"></script>

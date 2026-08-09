@@ -11,8 +11,10 @@
    ASCII art (js/asciiArt.js) flashed into a bordered frame at
    center screen (same flash-then-reveal trick as
    Evolution.js's .evolution-flash, just scoped to the ascii
-   frame — see flashInAscii() below), and the two hidden
-   easter eggs (4.6), one of which reuses the same art.
+   frame — see flashInAscii() below), a toggle button that
+   flash-swaps that art for a lightly pixelated render of the
+   real photo (js/pixelPhoto.js), and the two hidden easter eggs
+   (4.6), one of which reuses the ascii art.
 
    Entered via Letter.start(), called by quiz.js once the
    mystery-reveal sequence finishes. This is the end of the
@@ -24,7 +26,13 @@ const Letter = (function () {
 
   let bodyEl, signoffEl, spriteEl;
   let finaleTextEl, finaleAsciiEl, finaleAsciiFlashEl, finaleLineupEl, bookshelfBtn, posterBtn;
+  let finaleFrameEl, finalePhotoEl, finaleViewToggleBtn;
   let secretOverlayEl, secretAsciiWrapEl, secretAsciiEl, secretAsciiFlashEl, secretTextEl, secretLinkEl, secretContinueBtn;
+
+  // Which view the finale centerpiece is on right now — reset to false
+  // (ascii) every time the finale scene is (re-)entered, see runFinale().
+  let showingPhoto = false;
+  let photoRendered = false;
 
   // The Mudkip evolution line, in order — the center of the finale
   // lineup. Uses Assets.partyFront() (same lookup as every other party
@@ -38,11 +46,19 @@ const Letter = (function () {
     spriteEl = document.querySelector('#letter .letter-sprite');
 
     finaleTextEl = document.querySelector('#finale .finale-reveal-text');
+    finaleFrameEl = document.querySelector('#finale .finale-ascii-frame');
     finaleAsciiEl = document.querySelector('#finale .finale-ascii');
+    finalePhotoEl = document.querySelector('#finale .finale-photo');
     finaleAsciiFlashEl = document.querySelector('#finale .finale-ascii-flash');
+    finaleViewToggleBtn = document.querySelector('#finale .finale-view-toggle');
     finaleLineupEl = document.querySelector('#finale .finale-lineup');
     bookshelfBtn = document.querySelector('.easter-egg-bookshelf');
     posterBtn = document.querySelector('.easter-egg-poster');
+
+    finaleViewToggleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFinaleView();
+    });
 
     secretOverlayEl = document.querySelector('.secret-overlay');
     secretAsciiWrapEl = secretOverlayEl.querySelector('.secret-ascii-wrap');
@@ -134,6 +150,41 @@ const Letter = (function () {
     secretOverlayEl.classList.remove('hidden');
   }
 
+  /**
+   * Toggle button (Chapter 4.6 add-on) — flash-swaps the finale
+   * centerpiece between the static ascii art and a lightly pixelated
+   * render of the real photo (js/pixelPhoto.js), reusing the same
+   * flash overlay/timing as flashInAscii() above so it feels like the
+   * same trick, not a different UI. Renders the photo into the canvas
+   * lazily, once, the first time it's needed.
+   */
+  async function toggleFinaleView() {
+    finaleViewToggleBtn.disabled = true;
+
+    if (!showingPhoto && !photoRendered) {
+      const ok = await PixelPhoto.render(finalePhotoEl, Assets.portraitImg());
+      if (!ok) {
+        // Photo hasn't been dropped into assets/portrait.jpg yet — nothing
+        // to switch to, leave the ascii art up.
+        finaleViewToggleBtn.disabled = false;
+        return;
+      }
+      photoRendered = true;
+    }
+
+    finaleAsciiFlashEl.classList.add('ascii-flash-active');
+    await wait(150);
+
+    showingPhoto = !showingPhoto;
+    finaleAsciiEl.classList.toggle('hidden', showingPhoto);
+    finalePhotoEl.classList.toggle('hidden', !showingPhoto);
+    finaleViewToggleBtn.textContent = showingPhoto ? 'VIEW ASCII' : 'VIEW PHOTO';
+
+    await wait(200);
+    finaleAsciiFlashEl.classList.remove('ascii-flash-active');
+    finaleViewToggleBtn.disabled = false;
+  }
+
   /** Chapter 4.4 — typewriter-style reveal using the Chapter 2 dialogue engine's typeInto utility. */
   async function runLetter() {
     Assets.setBg(spriteEl, Assets.partyFront(GameState.state.partyStage));
@@ -183,6 +234,13 @@ const Letter = (function () {
   async function runFinale() {
     buildLineup();
 
+    // Reset to the ascii view every time the finale is (re-)entered.
+    showingPhoto = false;
+    photoRendered = false;
+    finaleAsciiEl.classList.remove('hidden');
+    finalePhotoEl.classList.add('hidden');
+    finaleViewToggleBtn.textContent = 'VIEW PHOTO';
+
     finaleTextEl.textContent = '';
     finaleAsciiEl.textContent = '';
 
@@ -190,7 +248,7 @@ const Letter = (function () {
 
     // Centerpiece — the static portrait art (js/asciiArt.js), flashed
     // straight in rather than converted from a photo live.
-    await flashInAscii(finaleAsciiEl, finaleAsciiFlashEl, finaleAsciiEl.closest('.finale-ascii-frame'), AsciiArt.PORTRAIT);
+    await flashInAscii(finaleAsciiEl, finaleAsciiFlashEl, finaleFrameEl, AsciiArt.PORTRAIT);
   }
 
   /** Called by quiz.js once the mystery-reveal sequence finishes. */
