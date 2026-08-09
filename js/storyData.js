@@ -45,6 +45,7 @@ const StoryData = {
       marshtomp:        { dex: 259, ext: "gif", size: { width: 160, height: 160 } },
       swampert:         { dex: 260, ext: "gif", size: { width: 320, height: 320 } },
       "mega-swampert":  { sheet: true, size: { width: 420, height: 420 } },
+    },
           // Source photo for the Chapter 4.6 text-art easter egg (bookshelf
     // button on the finale scene) AND the finale's centerpiece ASCII
     // portrait (Chapter 4.5/4.6 finale redesign). Drop a photo of her in
@@ -85,7 +86,6 @@ const StoryData = {
       { dex: 703, ext: "png" }, // Carbink
       { dex: 764, ext: "gif" }, // Comfey
     ],
-    },
   },
 
   // -------------------------------------------------------
