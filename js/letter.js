@@ -3,8 +3,14 @@
    Owns the love letter reveal, hands off to Evolution.js for
    the Swampert->Mega Swampert final reveal (4.5 — same flash/
    swap/glow mechanic as every other evolution, just the last
-   and biggest one), then lands on the finale scene that holds
-   the two hidden easter eggs (4.6).
+   and biggest one), then lands on the finale scene.
+
+   The finale scene shows every Pokémon sprite from the journey
+   lined up along the bottom (buildLineup()) with the Mudkip
+   evolution line front-and-center, her portrait rendered as
+   ASCII art in a bordered frame at center screen (reusing
+   js/textArt.js, same trick as the bookshelf easter egg below),
+   and the two hidden easter eggs (4.6).
 
    Entered via Letter.start(), called by quiz.js once the
    mystery-reveal sequence finishes. This is the end of the
@@ -15,8 +21,14 @@ const Letter = (function () {
   'use strict';
 
   let bodyEl, signoffEl, spriteEl;
-  let finaleTextEl, finaleSpriteEl, bookshelfBtn, posterBtn;
+  let finaleTextEl, finaleAsciiEl, finaleLineupEl, bookshelfBtn, posterBtn;
   let secretOverlayEl, secretAsciiEl, secretTextEl, secretLinkEl, secretContinueBtn;
+
+  // The Mudkip evolution line, in order — the center of the finale
+  // lineup. Uses Assets.partyFront() (same lookup as every other party
+  // sprite in the game) rather than hardcoded dex numbers, so it stays
+  // correct if StoryData.assets.partyStageSprites ever changes.
+  const MUDKIP_LINE_STAGES = ['mudkip', 'marshtomp', 'swampert', 'mega-swampert'];
 
   function mount() {
     bodyEl = document.querySelector('#letter .letter-body');
@@ -24,7 +36,8 @@ const Letter = (function () {
     spriteEl = document.querySelector('#letter .letter-sprite');
 
     finaleTextEl = document.querySelector('#finale .finale-reveal-text');
-    finaleSpriteEl = document.querySelector('#finale .finale-sprite');
+    finaleAsciiEl = document.querySelector('#finale .finale-ascii');
+    finaleLineupEl = document.querySelector('#finale .finale-lineup');
     bookshelfBtn = document.querySelector('.easter-egg-bookshelf');
     posterBtn = document.querySelector('.easter-egg-poster');
 
@@ -103,11 +116,49 @@ const Letter = (function () {
     Evolution.startFor(5, () => SceneManager.go('finale'));
   }
 
+  /**
+   * Builds the bottom-of-screen Pokémon lineup: every cameo sprite in
+   * StoryData.assets.finaleLineupSprites split evenly left/right around
+   * the Mudkip evolution line, which sits in the center (bigger, glowing)
+   * as the finale's stars. Pure DOM build — no animation, so it's safe
+   * to call every time the finale scene is entered.
+   */
+  function buildLineup() {
+    if (!finaleLineupEl) return;
+    finaleLineupEl.innerHTML = '';
+
+    const makeIcon = (src, isCenter) => {
+      const el = document.createElement('div');
+      el.className = isCenter ? 'finale-lineup-icon finale-lineup-icon-center' : 'finale-lineup-icon';
+      Assets.setBg(el, src);
+      return el;
+    };
+
+    const cameos = StoryData.assets.finaleLineupSprites || [];
+    const mid = Math.ceil(cameos.length / 2);
+    const left = cameos.slice(0, mid);
+    const right = cameos.slice(mid);
+
+    left.forEach((p) => finaleLineupEl.appendChild(makeIcon(Assets.pokemonFront(p.dex, p.ext))));
+    MUDKIP_LINE_STAGES.forEach((stage) => finaleLineupEl.appendChild(makeIcon(Assets.partyFront(stage), true)));
+    right.forEach((p) => finaleLineupEl.appendChild(makeIcon(Assets.pokemonFront(p.dex, p.ext))));
+  }
+
   /** Chapter 4.5 tie-in / 4.6 — the finale scene, entered only after the Mega reveal resolves. */
   async function runFinale() {
-    Assets.setBg(finaleSpriteEl, Assets.partyFront(GameState.state.partyStage));
+    buildLineup();
+
     finaleTextEl.textContent = '';
+    finaleAsciiEl.textContent = '';
+
     await DialogueEngine.typeInto(finaleTextEl, StoryData.finalReveal.revealText);
+
+    // Centerpiece — same text-art trick as the bookshelf easter egg
+    // (js/textArt.js), just shown openly instead of hidden behind a
+    // button. Falls back to plain text if the photo hasn't been
+    // dropped into assets/portrait.jpg yet.
+    const art = await TextArt.renderFromImage(Assets.portraitImg(), { cols: 64 });
+    finaleAsciiEl.textContent = art || StoryData.finalReveal.asciiFallback;
   }
 
   /** Called by quiz.js once the mystery-reveal sequence finishes. */

@@ -132,8 +132,20 @@
   <!-- Chapter 4.5/4.6 — Final reveal + hidden easter eggs -->
   <section class="scene" id="finale" data-scene="finale">
     <div class="finale-bg" aria-hidden="true"></div>
-    <div class="sprite finale-sprite" aria-hidden="true"></div>
+
     <div class="finale-reveal-text"></div>
+
+    <!-- Centerpiece — her photo, rendered as text art (js/textArt.js),
+         wrapped in a border. Built by Letter.runFinale(). -->
+    <div class="finale-ascii-frame pixel-border-gold">
+      <pre class="finale-ascii"></pre>
+    </div>
+
+    <!-- Every Pokémon sprite from the journey, lined up along the
+         bottom, with the Mudkip->Marshtomp->Swampert->Mega Swampert
+         line front-and-center. Built by Letter.buildLineup(). -->
+    <div class="finale-lineup" aria-hidden="true"></div>
+
     <div class="finale-easter-eggs">
       <button type="button" class="easter-egg easter-egg-bookshelf" aria-label="???"></button>
       <button type="button" class="easter-egg easter-egg-poster" aria-label="???"></button>

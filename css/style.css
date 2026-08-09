@@ -1428,6 +1428,10 @@ a {
 
 /* ---------------------------------------------------------
    16. FINALE & EASTER EGGS  (Chapter 4.5, 4.6)
+   Redesigned finale: the Mudkip line + every cameo Pokémon
+   sprite lined up along the bottom (.finale-lineup), and her
+   portrait rendered as ASCII art in a bordered frame at
+   center screen (.finale-ascii-frame). See letter.js.
    --------------------------------------------------------- */
 /* Real image goes in assets/scenes/finale.gif. */
 .finale-bg {
@@ -1441,18 +1445,6 @@ a {
   background-position: center;
 }
 
-/* Real sprite image (the Mega Swampert sheet) is set inline via
-   Assets.setBg() in letter.js, once GameState.state.partyStage has
-   already advanced to 'mega-swampert' from the evolution reveal. */
-.finale-sprite {
-  position: relative;
-  z-index: var(--z-scene);
-  width: calc(var(--px-8) * 6);
-  height: calc(var(--px-8) * 6);
-  margin-bottom: var(--px-4);
-  filter: drop-shadow(0 0 var(--px-4) var(--color-gold));
-}
-
 .finale-reveal-text {
   position: relative;
   z-index: var(--z-scene);
@@ -1462,18 +1454,95 @@ a {
   text-align: center;
   min-height: 1.6em;
   width: min(90vw, 560px);
-  margin-bottom: var(--px-8);
+  margin-bottom: var(--px-4);
+}
+
+/* Centerpiece — her photo rendered as text art (js/textArt.js),
+   wrapped in the shared gold pixel-border. Sits above the bottom
+   lineup, so it keeps its own bottom margin clear of it. */
+.finale-ascii-frame {
+  position: relative;
+  z-index: var(--z-scene);
+  background: var(--color-panel);
+  padding: var(--px-3);
+  margin-bottom: calc(var(--px-8) * 2.4);
+  max-width: min(92vw, 480px);
+  max-height: 50vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Same convention as .secret-ascii (letter.js's bookshelf easter egg) —
+   small monospace font + line-height: 1 so the character grid reads as
+   a picture instead of a wall of text. */
+.finale-ascii {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 4px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--color-pink);
+  white-space: pre;
+  text-align: center;
+  margin: 0;
+  max-width: 100%;
+}
+
+@media (min-width: 600px) {
+  .finale-ascii {
+    font-size: 5px;
+  }
+}
+
+/* Every Pokémon sprite from the journey (StoryData.assets.
+   finaleLineupSprites), built by Letter.buildLineup(). Pinned to the
+   bottom edge with a fade so it reads as a crowd, not a UI element. */
+.finale-lineup {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-scene);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: var(--px-1);
+  padding: var(--px-4) var(--px-2) var(--px-1);
+  background: linear-gradient(to top, rgba(11, 29, 58, 0.85), rgba(11, 29, 58, 0));
+}
+
+.finale-lineup-icon {
+  width: calc(var(--px-8) * 0.85);
+  height: calc(var(--px-8) * 0.85);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  image-rendering: pixelated;
+  opacity: 0.8;
+  filter: drop-shadow(0 var(--px-1) 2px rgba(0, 0, 0, 0.6));
+}
+
+/* The Mudkip->Marshtomp->Swampert->Mega Swampert line — bigger and
+   glowing gold so it reads as the star of the lineup, front-and-center. */
+.finale-lineup-icon-center {
+  width: calc(var(--px-8) * 1.5);
+  height: calc(var(--px-8) * 1.5);
+  opacity: 1;
+  filter: drop-shadow(0 0 var(--px-2) var(--color-gold));
+  margin: 0 calc(var(--px-1) * -1);
 }
 
 .finale-easter-eggs {
   position: absolute;
-  bottom: var(--px-6);
+  top: var(--px-4);
   left: 0;
   right: 0;
   z-index: var(--z-scene);
   display: flex;
-  justify-content: center;
-  gap: var(--px-8);
+  justify-content: space-between;
+  padding: 0 var(--px-4);
 }
 
 /* Deliberately understated (low opacity, no label beyond aria-hidden

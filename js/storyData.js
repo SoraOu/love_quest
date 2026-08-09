@@ -46,12 +46,45 @@ const StoryData = {
       swampert:         { dex: 260, ext: "gif", size: { width: 320, height: 320 } },
       "mega-swampert":  { sheet: true, size: { width: 420, height: 420 } },
           // Source photo for the Chapter 4.6 text-art easter egg (bookshelf
-    // button on the finale scene). Drop a photo of her in at this exact
-    // path and TextArt.renderFromImage() picks it up automatically —
-    // same "no code changes needed" convention as everything else here.
-    // Until the file exists, the bookshelf falls back to the plain
-    // bookshelfMessage text below.
+    // button on the finale scene) AND the finale's centerpiece ASCII
+    // portrait (Chapter 4.5/4.6 finale redesign). Drop a photo of her in
+    // at this exact path and TextArt.renderFromImage() picks it up
+    // automatically — same "no code changes needed" convention as
+    // everything else here. Until the file exists, both spots fall back
+    // to their plain-text message instead.
     portraitImg: "assets/portrait.jpg",
+
+    // Every cameo Pokémon sprite that isn't part of the Mudkip line,
+    // lined up along the bottom of the finale scene (letter.js
+    // buildLineup()) flanking the Mudkip->Marshtomp->Swampert->Mega
+    // Swampert lineup in the center. dex/ext point at
+    // assets/sprites/pokemon/front/<dex>.<ext>, same as battle.enemies
+    // above. Ascending dex order; add/remove entries freely — the
+    // lineup just re-splits evenly around the center whenever this
+    // array changes.
+    finaleLineupSprites: [
+      { dex: 26,  ext: "gif" }, // Raichu
+      { dex: 45,  ext: "gif" }, // Vileplume
+      { dex: 51,  ext: "gif" }, // Dugtrio
+      { dex: 70,  ext: "gif" }, // Weepinbell
+      { dex: 122, ext: "gif" }, // Mr. Mime
+      { dex: 124, ext: "gif" }, // Jynx
+      { dex: 164, ext: "gif" }, // Noctowl   (Ch.2 enemy)
+      { dex: 176, ext: "gif" }, // Togetic
+      { dex: 192, ext: "gif" }, // Sunflora  (Ch.1 enemy)
+      { dex: 234, ext: "gif" }, // Stantler
+      { dex: 332, ext: "gif" }, // Cacturne
+      { dex: 334, ext: "gif" }, // Altaria
+      { dex: 407, ext: "gif" }, // Roserade
+      { dex: 425, ext: "gif" }, // Drifblim
+      { dex: 468, ext: "gif" }, // Togekiss
+      { dex: 477, ext: "gif" }, // Dusknoir  (Ch.3 enemy)
+      { dex: 524, ext: "gif" }, // Roggenrola(Ch.4 enemy)
+      { dex: 626, ext: "gif" }, // Bouffalant
+      { dex: 663, ext: "png" }, // Talonflame
+      { dex: 703, ext: "png" }, // Carbink
+      { dex: 764, ext: "gif" }, // Comfey
+    ],
     },
   },
 
@@ -343,6 +376,10 @@ const StoryData = {
   // -------------------------------------------------------
   finalReveal: {
     revealText: "", // "Jerome revealed" moment text
+    // Shown inside the ASCII-art frame instead of the portrait if
+    // assets/portrait.jpg hasn't been dropped in yet (see
+    // assets.portraitImg above).
+    asciiFallback: "",
   },
 
   // -------------------------------------------------------
