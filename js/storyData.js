@@ -46,13 +46,11 @@ const StoryData = {
       swampert:         { dex: 260, ext: "gif", size: { width: 320, height: 320 } },
       "mega-swampert":  { sheet: true, size: { width: 420, height: 420 } },
     },
-          // Source photo for the Chapter 4.6 text-art easter egg (bookshelf
-    // button on the finale scene) AND the finale's centerpiece ASCII
-    // portrait (Chapter 4.5/4.6 finale redesign). Drop a photo of her in
-    // at this exact path and TextArt.renderFromImage() picks it up
-    // automatically — same "no code changes needed" convention as
-    // everything else here. Until the file exists, both spots fall back
-    // to their plain-text message instead.
+          // No longer used for the bookshelf easter egg or the finale
+    // centerpiece — both now flash the static art in js/asciiArt.js
+    // instead of converting a photo at runtime (see js/textArt.js,
+    // still in the repo but unwired). Left here in case any other
+    // scene wants her actual portrait image later.
     portraitImg: "assets/portrait.jpg",
 
     // Every cameo Pokémon sprite that isn't part of the Mudkip line,
@@ -297,7 +295,11 @@ const StoryData = {
       postBattleDialogue: [
         "Dang it!",
         "Here! Take it!",
-        "I don't want it anymore"
+        "I don't want it anymore",
+        "Before you go, there's gonna be a trial for you after this.",
+        "Why you?",
+        "We both know that you know why.",
+        "Go ahead young lady."
       ],
       revisitDialogue: ["It looked yummy too. \n*sigh*"],
       itemName: "Mango Graham",
@@ -344,23 +346,23 @@ const StoryData = {
   // Quiz gate (Chapter 4.1, 4.2) — 5 clues total.
   // -------------------------------------------------------
   quiz: {
-    inscription: "Inscription",
+    inscription: "If you're really her, answer these very super ultimate extra pro max hard questions.",
     clues: [
       { question: "Who is her main hero in Mobile Legends?", answer: "Zetian" },
       { question: "What is her favorite food?", answer: "Sisig" },
-      { question: "What is the date today?", answer: "August 10" },
+      { question: "How old is she now?", answer: "19" },
       { question: "What is the name of a certain 'session' that she and I used to talk on?", answer: "Lamok Session" },
       { question: "Who made the first move? She or me?", answer: "You" },
     ],
-    wrongFeedback: "",   // shown on incorrect answer
-    correctFeedback: "", // shown on correct answer
+    wrongFeedback: "Aroy mali!",   // shown on incorrect answer
+    correctFeedback: "Good.", // shown on correct answer
   },
 
   // -------------------------------------------------------
   // Mystery reveal (Chapter 4.3)
   // -------------------------------------------------------
   mysteryReveal: {
-    assembleText: "Swooooshhh!", // text shown as clues assemble
+    assembleText: "Gagi may nangyayare!", // text shown as clues assemble
   },
 
   // -------------------------------------------------------

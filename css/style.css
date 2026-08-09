@@ -1463,11 +1463,12 @@ a {
 .finale-ascii-frame {
   position: relative;
   z-index: var(--z-scene);
-  background: var(--color-panel);
+  background: #000000;
   padding: var(--px-3);
   margin-bottom: calc(var(--px-8) * 2.4);
-  max-width: min(92vw, 480px);
-  max-height: 50vh;
+  aspect-ratio: 240 / 155; 
+  max-width: min(96vw, 900px);
+  max-height: 68vh;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1476,23 +1477,46 @@ a {
 
 /* Same convention as .secret-ascii (letter.js's bookshelf easter egg) —
    small monospace font + line-height: 1 so the character grid reads as
-   a picture instead of a wall of text. */
+   a picture instead of a wall of text. Rendered at its natural size and
+   then scaled to fit via an inline transform (Letter.fitAsciiToFrame in
+   letter.js), since js/asciiArt.js's art is a fixed grid that won't
+   necessarily match .finale-ascii-frame's box at a flat font-size.
+   Note: the rendered size is set by .finale-ascii-frame's max-width/
+   max-height above, not by font-size here — fitAsciiToFrame() always
+   scales the art to fill whichever of those is the tighter fit, so
+   bumping font-size alone won't make the art bigger on screen. */
 .finale-ascii {
   font-family: 'Courier New', Courier, monospace;
   font-size: 4px;
   line-height: 1;
   letter-spacing: 0;
-  color: var(--color-pink);
+  color: #ffffff;
   white-space: pre;
   text-align: center;
   margin: 0;
-  max-width: 100%;
 }
 
 @media (min-width: 600px) {
   .finale-ascii {
     font-size: 5px;
   }
+}
+
+/* Flash-in reveal (Chapter 4.6 redesign) — same white-flash-then-fade
+   mechanic as .evolution-flash, covering the frame while the static art
+   (js/asciiArt.js) gets dropped in and scaled behind it. */
+.finale-ascii-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--color-foam);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms linear;
+}
+
+.finale-ascii-flash.ascii-flash-active {
+  opacity: 1;
 }
 
 /* Every Pokémon sprite from the journey (StoryData.assets.
@@ -1514,8 +1538,8 @@ a {
 }
 
 .finale-lineup-icon {
-  width: calc(var(--px-8) * 0.85);
-  height: calc(var(--px-8) * 0.85);
+  width: calc(var(--px-8) * 1.5);
+  height: calc(var(--px-8) * 1.5);
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
@@ -1527,8 +1551,8 @@ a {
 /* The Mudkip->Marshtomp->Swampert->Mega Swampert line — bigger and
    glowing gold so it reads as the star of the lineup, front-and-center. */
 .finale-lineup-icon-center {
-  width: calc(var(--px-8) * 1.5);
-  height: calc(var(--px-8) * 1.5);
+  width: calc(var(--px-8) * 2);
+  height: calc(var(--px-8) * 2);
   opacity: 1;
   filter: drop-shadow(0 0 var(--px-2) var(--color-gold));
   margin: 0 calc(var(--px-1) * -1);
@@ -1620,6 +1644,23 @@ a {
 /* Chapter 4.6 text-art easter egg — a photo rendered as a grid of
    characters (see js/textArt.js). Small monospace font + line-height: 1
    so the character grid reads as a picture instead of a wall of text. */
+.secret-ascii-wrap {
+  position: relative;
+  /* Explicit cap (not a %) — as a flex item with align-items: center,
+     .secret-panel would otherwise grow to fit the art's natural
+     (unscaled) size before fitAsciiToFrame() gets a chance to shrink it. */
+  width: min(72vw, 360px);
+  max-height: 40vh;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.secret-ascii-wrap.hidden {
+  display: none;
+}
+
 .secret-ascii {
   font-family: 'Courier New', Courier, monospace;
   font-size: 4px;
@@ -1628,18 +1669,27 @@ a {
   color: var(--color-pink);
   white-space: pre;
   margin: 0;
-  max-width: 100%;
-  overflow: hidden;
-}
-
-.secret-ascii.hidden {
-  display: none;
 }
 
 @media (min-width: 600px) {
   .secret-ascii {
     font-size: 5px;
   }
+}
+
+/* Same flash-in reveal as .finale-ascii-flash. */
+.secret-ascii-flash {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--color-foam);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms linear;
+}
+
+.secret-ascii-flash.ascii-flash-active {
+  opacity: 1;
 }
 
 .secret-link {

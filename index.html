@@ -135,10 +135,11 @@
 
     <div class="finale-reveal-text"></div>
 
-    <!-- Centerpiece — her photo, rendered as text art (js/textArt.js),
+    <!-- Centerpiece — static ASCII art (js/asciiArt.js), flashed in and
          wrapped in a border. Built by Letter.runFinale(). -->
     <div class="finale-ascii-frame pixel-border-gold">
       <pre class="finale-ascii"></pre>
+      <div class="finale-ascii-flash" aria-hidden="true"></div>
     </div>
 
     <!-- Every Pokémon sprite from the journey, lined up along the
@@ -203,7 +204,10 @@
   -->
   <div class="secret-overlay hidden">
     <div class="secret-panel pixel-border-gold">
-      <pre class="secret-ascii hidden"></pre>
+      <div class="secret-ascii-wrap hidden">
+        <pre class="secret-ascii"></pre>
+        <div class="secret-ascii-flash" aria-hidden="true"></div>
+      </div>
       <div class="secret-text"></div>
       <a class="secret-link hidden" target="_blank" rel="noopener noreferrer">OPEN PLAYLIST</a>
       <button type="button" class="secret-continue">CLOSE</button>
@@ -250,6 +254,7 @@
 <script src="js/storyData.js"></script>
 <script src="js/assets.js"></script>
 <script src="js/textArt.js"></script>
+<script src="js/asciiArt.js"></script>
 <script src="js/sceneManager.js"></script>
 <script src="js/input.js"></script>
 <script src="js/dialogueEngine.js"></script>

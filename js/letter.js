@@ -7,10 +7,12 @@
 
    The finale scene shows every Pokémon sprite from the journey
    lined up along the bottom (buildLineup()) with the Mudkip
-   evolution line front-and-center, her portrait rendered as
-   ASCII art in a bordered frame at center screen (reusing
-   js/textArt.js, same trick as the bookshelf easter egg below),
-   and the two hidden easter eggs (4.6).
+   evolution line front-and-center, her portrait as static
+   ASCII art (js/asciiArt.js) flashed into a bordered frame at
+   center screen (same flash-then-reveal trick as
+   Evolution.js's .evolution-flash, just scoped to the ascii
+   frame — see flashInAscii() below), and the two hidden
+   easter eggs (4.6), one of which reuses the same art.
 
    Entered via Letter.start(), called by quiz.js once the
    mystery-reveal sequence finishes. This is the end of the
@@ -21,8 +23,8 @@ const Letter = (function () {
   'use strict';
 
   let bodyEl, signoffEl, spriteEl;
-  let finaleTextEl, finaleAsciiEl, finaleLineupEl, bookshelfBtn, posterBtn;
-  let secretOverlayEl, secretAsciiEl, secretTextEl, secretLinkEl, secretContinueBtn;
+  let finaleTextEl, finaleAsciiEl, finaleAsciiFlashEl, finaleLineupEl, bookshelfBtn, posterBtn;
+  let secretOverlayEl, secretAsciiWrapEl, secretAsciiEl, secretAsciiFlashEl, secretTextEl, secretLinkEl, secretContinueBtn;
 
   // The Mudkip evolution line, in order — the center of the finale
   // lineup. Uses Assets.partyFront() (same lookup as every other party
@@ -37,31 +39,24 @@ const Letter = (function () {
 
     finaleTextEl = document.querySelector('#finale .finale-reveal-text');
     finaleAsciiEl = document.querySelector('#finale .finale-ascii');
+    finaleAsciiFlashEl = document.querySelector('#finale .finale-ascii-flash');
     finaleLineupEl = document.querySelector('#finale .finale-lineup');
     bookshelfBtn = document.querySelector('.easter-egg-bookshelf');
     posterBtn = document.querySelector('.easter-egg-poster');
 
     secretOverlayEl = document.querySelector('.secret-overlay');
+    secretAsciiWrapEl = secretOverlayEl.querySelector('.secret-ascii-wrap');
     secretAsciiEl = secretOverlayEl.querySelector('.secret-ascii');
+    secretAsciiFlashEl = secretOverlayEl.querySelector('.secret-ascii-flash');
     secretTextEl = secretOverlayEl.querySelector('.secret-text');
     secretLinkEl = secretOverlayEl.querySelector('.secret-link');
     secretContinueBtn = secretOverlayEl.querySelector('.secret-continue');
 
-    // Bookshelf easter egg — her photo, rendered as a picture made of
-    // text (see js/textArt.js). Opens right away instead of waiting on
-    // the render, so it never feels stuck; art fills in a beat later.
+    // Bookshelf easter egg — her portrait, as the same static ASCII art
+    // (js/asciiArt.js) used in the finale, flashed straight in.
     bookshelfBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      showSecret({ ascii: '' });
-      const art = await TextArt.renderFromImage(Assets.portraitImg(), { cols: 70 });
-      if (art) {
-        secretAsciiEl.textContent = art;
-        secretAsciiEl.classList.remove('hidden');
-      } else {
-        // Photo hasn't been dropped into assets/portrait.jpg yet —
-        // fall back to the plain message so the button still does something.
-        showSecret({ message: StoryData.easterEggs.bookshelfMessage });
-      }
+      showSecret({ ascii: AsciiArt.PORTRAIT });
     });
     posterBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -73,20 +68,60 @@ const Letter = (function () {
     });
   }
 
+  function wait(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Scales a <pre> of ASCII art down (never up) via CSS transform so a
+   * fixed-size art grid (js/asciiArt.js) always fits inside its frame,
+   * whatever the frame's box happens to be — instead of relying on a
+   * flat font-size guess. Reset transform first so the measurement is
+   * always against the pre's natural, unscaled size.
+   */
+  function fitAsciiToFrame(preEl, frameEl) {
+    preEl.style.transform = 'none';
+    const availWidth = frameEl.clientWidth;
+    const availHeight = frameEl.clientHeight || frameEl.clientWidth;
+    const naturalWidth = preEl.scrollWidth;
+    const naturalHeight = preEl.scrollHeight;
+    if (!naturalWidth || !naturalHeight || !availWidth) return;
+
+    const scale = Math.min(availWidth / naturalWidth, availHeight / naturalHeight, 1);
+    preEl.style.transform = `scale(${scale})`;
+  }
+
+  /**
+   * Flash-then-reveal an ASCII art string into a <pre> — same white-flash
+   * -covers-the-swap mechanic as Evolution.js's .evolution-flash, just
+   * scoped to whichever frame is passed in. Used by both the finale
+   * centerpiece and the bookshelf easter egg, since they show the same
+   * static art (js/asciiArt.js) rather than converting a photo live.
+   */
+  async function flashInAscii(preEl, flashEl, frameEl, text) {
+    flashEl.classList.add('ascii-flash-active');
+    await wait(150);
+    preEl.textContent = text;
+    fitAsciiToFrame(preEl, frameEl);
+    await wait(200);
+    flashEl.classList.remove('ascii-flash-active');
+  }
+
   /**
    * Chapter 4.6 — single reusable popup for both hidden easter eggs.
    * @param {{ message?: string, url?: string, ascii?: string }} [content]
    */
-  function showSecret(content) {
+  async function showSecret(content) {
     content = content || {};
     secretTextEl.textContent = content.message || '';
 
-    if (typeof content.ascii === 'string') {
-      secretAsciiEl.textContent = content.ascii;
-      secretAsciiEl.classList.remove('hidden');
+    if (typeof content.ascii === 'string' && content.ascii) {
+      secretAsciiWrapEl.classList.remove('hidden');
+      secretOverlayEl.classList.remove('hidden');
+      await flashInAscii(secretAsciiEl, secretAsciiFlashEl, secretAsciiWrapEl, content.ascii);
     } else {
       secretAsciiEl.textContent = '';
-      secretAsciiEl.classList.add('hidden');
+      secretAsciiWrapEl.classList.add('hidden');
     }
 
     if (content.url) {
@@ -153,12 +188,9 @@ const Letter = (function () {
 
     await DialogueEngine.typeInto(finaleTextEl, StoryData.finalReveal.revealText);
 
-    // Centerpiece — same text-art trick as the bookshelf easter egg
-    // (js/textArt.js), just shown openly instead of hidden behind a
-    // button. Falls back to plain text if the photo hasn't been
-    // dropped into assets/portrait.jpg yet.
-    const art = await TextArt.renderFromImage(Assets.portraitImg(), { cols: 64 });
-    finaleAsciiEl.textContent = art || StoryData.finalReveal.asciiFallback;
+    // Centerpiece — the static portrait art (js/asciiArt.js), flashed
+    // straight in rather than converted from a photo live.
+    await flashInAscii(finaleAsciiEl, finaleAsciiFlashEl, finaleAsciiEl.closest('.finale-ascii-frame'), AsciiArt.PORTRAIT);
   }
 
   /** Called by quiz.js once the mystery-reveal sequence finishes. */
