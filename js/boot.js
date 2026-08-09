@@ -15,10 +15,12 @@ const Boot = (function () {
   'use strict';
 
   const BOOT_ANIM_MS = 1400; // keep in rough sync with the CSS fade-in duration
+  const DEBUG_SKIP_CODE = 'lara';
 
   let bootState = 'idle'; // 'animating' | 'ready'
   let bootAnimTimer = null;
   let musicStarted = false; // gate so GameAudio.play('boot') only ever fires once, on the first press
+  let debugSkipBuffer = '';
 
   let titleEl, subtitleEl, pressStartEl, versionEl;
   let nameRevealEl;
@@ -48,6 +50,35 @@ const Boot = (function () {
     return new Promise((resolve) => window.setTimeout(resolve, ms));
   }
 
+  /**
+   * Dev-only shortcut: type "lara" (no Enter needed, case-insensitive)
+   * while sitting on the boot screen to skip straight to the Ch.4
+   * letter/finale flow, bypassing map/chapters/quiz entirely. No GUI
+   * for it anywhere — it's just this listener, only live while the
+   * boot scene is active. Handy for checking letter/finale changes
+   * without replaying the whole game each time.
+   */
+  function onDebugSkipKeydown(e) {
+    if (e.key.length !== 1) return; // ignore Shift/Enter/arrows/etc.
+    debugSkipBuffer = (debugSkipBuffer + e.key.toLowerCase()).slice(-DEBUG_SKIP_CODE.length);
+    if (debugSkipBuffer === DEBUG_SKIP_CODE) {
+      debugSkipBuffer = '';
+      skipToLetterScene();
+    }
+  }
+
+  function skipToLetterScene() {
+    window.clearTimeout(bootAnimTimer);
+    // Set the party to 'swampert' first so the finale's own evolve()
+    // call lands on 'mega-swampert', same as it would after a real
+    // playthrough, instead of skipping there from 'mudkip'.
+    GameState.state.partyStage = 'swampert';
+    if (!GameState.state.mudkipNickname) {
+      GameState.setNickname(StoryData.intro.nicknameDefault);
+    }
+    Letter.start();
+  }
+
   // --- Scene: boot -----------------------------------------------------
   function registerBootScene() {
     SceneManager.register('boot', {
@@ -68,9 +99,13 @@ const Boot = (function () {
           bootState = 'ready';
           pressStartEl.classList.add('press-start-visible');
         }, BOOT_ANIM_MS);
+
+        debugSkipBuffer = '';
+        document.addEventListener('keydown', onDebugSkipKeydown);
       },
       onLeave() {
         window.clearTimeout(bootAnimTimer);
+        document.removeEventListener('keydown', onDebugSkipKeydown);
       },
       onInput(action) {
         if (action !== 'advance') return;
