@@ -327,8 +327,8 @@ const StoryData = {
   // Love letter (Chapter 4.4)
   // -------------------------------------------------------
   letter: {
-    body: "",
-    signOff: "",
+    body: "Birthday mo na bb. Happy Birthday! I hope you enjoyed your day. Weird kasi somehow, feel ko ay parang ito na din yung first anniversary natin HAHHAHHAAH. From lamok sessions, to 'admin abuse', to wherever this relationship may lead us. It's your day, and I hope happy ang puso mo ngayon. Happy Birthday, my love. For more birthdays to come, and for your wish to come true💖",
+    signOff: "Lovingly yours and will always be yours\n-Jerome",
   },
 
   // -------------------------------------------------------
