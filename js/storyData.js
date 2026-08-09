@@ -309,8 +309,8 @@ const StoryData = {
       { question: "Who is her main hero in Mobile Legends?", answer: "Zetian" },
       { question: "What is her favorite food?", answer: "Sisig" },
       { question: "What is the date today?", answer: "August 10" },
-      { question: "question", answer: "answer" },
-      { question: "question", answer: "answer" },
+      { question: "What is the name of a certain 'session' that she and I used to talk on?", answer: "Lamok Session" },
+      { question: "Who made the first move? She or me?", answer: "You" },
     ],
     wrongFeedback: "",   // shown on incorrect answer
     correctFeedback: "", // shown on correct answer
@@ -320,7 +320,7 @@ const StoryData = {
   // Mystery reveal (Chapter 4.3)
   // -------------------------------------------------------
   mysteryReveal: {
-    assembleText: "", // text shown as clues assemble
+    assembleText: "Swooooshhh!", // text shown as clues assemble
   },
 
   // -------------------------------------------------------
