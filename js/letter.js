@@ -16,7 +16,7 @@ const Letter = (function () {
 
   let bodyEl, signoffEl, spriteEl;
   let finaleTextEl, finaleSpriteEl, bookshelfBtn, posterBtn;
-  let secretOverlayEl, secretTextEl, secretLinkEl, secretContinueBtn;
+  let secretOverlayEl, secretAsciiEl, secretTextEl, secretLinkEl, secretContinueBtn;
 
   function mount() {
     bodyEl = document.querySelector('#letter .letter-body');
@@ -29,17 +29,30 @@ const Letter = (function () {
     posterBtn = document.querySelector('.easter-egg-poster');
 
     secretOverlayEl = document.querySelector('.secret-overlay');
+    secretAsciiEl = secretOverlayEl.querySelector('.secret-ascii');
     secretTextEl = secretOverlayEl.querySelector('.secret-text');
     secretLinkEl = secretOverlayEl.querySelector('.secret-link');
     secretContinueBtn = secretOverlayEl.querySelector('.secret-continue');
 
-    bookshelfBtn.addEventListener('click', (e) => {
+    // Bookshelf easter egg — her photo, rendered as a picture made of
+    // text (see js/textArt.js). Opens right away instead of waiting on
+    // the render, so it never feels stuck; art fills in a beat later.
+    bookshelfBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      showSecret(StoryData.easterEggs.bookshelfMessage, null);
+      showSecret({ ascii: '' });
+      const art = await TextArt.renderFromImage(Assets.portraitImg(), { cols: 70 });
+      if (art) {
+        secretAsciiEl.textContent = art;
+        secretAsciiEl.classList.remove('hidden');
+      } else {
+        // Photo hasn't been dropped into assets/portrait.jpg yet —
+        // fall back to the plain message so the button still does something.
+        showSecret({ message: StoryData.easterEggs.bookshelfMessage });
+      }
     });
     posterBtn.addEventListener('click', (e) => {
       e.stopPropagation();
-      showSecret('', StoryData.easterEggs.playlistUrl);
+      showSecret({ url: StoryData.easterEggs.playlistUrl });
     });
     secretContinueBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -47,11 +60,24 @@ const Letter = (function () {
     });
   }
 
-  /** Chapter 4.6 — single reusable popup for both hidden easter eggs. */
-  function showSecret(message, url) {
-    secretTextEl.textContent = message || '';
-    if (url) {
-      secretLinkEl.href = url;
+  /**
+   * Chapter 4.6 — single reusable popup for both hidden easter eggs.
+   * @param {{ message?: string, url?: string, ascii?: string }} [content]
+   */
+  function showSecret(content) {
+    content = content || {};
+    secretTextEl.textContent = content.message || '';
+
+    if (typeof content.ascii === 'string') {
+      secretAsciiEl.textContent = content.ascii;
+      secretAsciiEl.classList.remove('hidden');
+    } else {
+      secretAsciiEl.textContent = '';
+      secretAsciiEl.classList.add('hidden');
+    }
+
+    if (content.url) {
+      secretLinkEl.href = content.url;
       secretLinkEl.classList.remove('hidden');
     } else {
       secretLinkEl.removeAttribute('href');

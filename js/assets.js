@@ -40,9 +40,15 @@ const Assets = (function () {
   }
 
   function megaSwampertSheet() {
+    
     return cfg.megaSwampertSheet;
   }
 
+  /** Source photo for the Chapter 4.6 text-art easter egg. */
+  function portraitImg() {
+    return cfg.portraitImg;
+  }
+  
   /** Front sprite for a given party evolution stage ('mudkip' | 'marshtomp' | 'swampert' | 'mega-swampert'). */
   function partyFront(stage) {
     const info = cfg.partyStageSprites[stage];
@@ -92,7 +98,7 @@ const Assets = (function () {
   }
 
   return {
-    pokemonFront, pokemonBack, trainer, chapterBg, dialogueBox, megaSwampertSheet,
+    pokemonFront, pokemonBack, trainer, chapterBg, dialogueBox, megaSwampertSheet, portraitImg,
     partyFront, partyBack, partyFrontSize, setBg, setSize,
   };
 })();
