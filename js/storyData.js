@@ -45,6 +45,13 @@ const StoryData = {
       marshtomp:        { dex: 259, ext: "gif", size: { width: 160, height: 160 } },
       swampert:         { dex: 260, ext: "gif", size: { width: 320, height: 320 } },
       "mega-swampert":  { sheet: true, size: { width: 420, height: 420 } },
+          // Source photo for the Chapter 4.6 text-art easter egg (bookshelf
+    // button on the finale scene). Drop a photo of her in at this exact
+    // path and TextArt.renderFromImage() picks it up automatically —
+    // same "no code changes needed" convention as everything else here.
+    // Until the file exists, the bookshelf falls back to the plain
+    // bookshelfMessage text below.
+    portraitImg: "assets/portrait.jpg",
     },
   },
 

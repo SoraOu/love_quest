@@ -24,9 +24,14 @@ document.addEventListener('DOMContentLoaded', () => {
   // exact names and they'll just start working — no other code changes.
   // "Overall" is registered under every scene except battle/letter so it
   // plays continuously (without restarting) as you move between them.
-  GameAudio.registerTrack('battle', 'assets/music/battle.mp3');
+  GameAudio.registerTrack('battle', 'assets/music/battle.mp3', { volume: 0.35 });
   GameAudio.registerTrack('letter', 'assets/music/letter.mp3');
-  ['boot', 'name-reveal', 'intro', 'map', 'chapter', 'evolution', 'quiz', 'mystery-reveal', 'finale']
+  // 'finale' shares the exact same src as 'letter' on purpose — GameAudio.play()
+  // leaves playback alone (no restart) when the incoming scene's track matches
+  // what's already playing, so the letter music just keeps going, uninterrupted,
+  // all the way through the last scene.
+  GameAudio.registerTrack('finale', 'assets/music/letter.mp3');
+  ['boot', 'name-reveal', 'intro', 'map', 'chapter', 'evolution', 'quiz', 'mystery-reveal']
     .forEach((sceneId) => GameAudio.registerTrack(sceneId, 'assets/music/overall.mp3'));
 
   SceneManager.go('boot');

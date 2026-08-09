@@ -1548,6 +1548,31 @@ a {
   min-height: 1.4em;
 }
 
+/* Chapter 4.6 text-art easter egg — a photo rendered as a grid of
+   characters (see js/textArt.js). Small monospace font + line-height: 1
+   so the character grid reads as a picture instead of a wall of text. */
+.secret-ascii {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 4px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--color-pink);
+  white-space: pre;
+  margin: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.secret-ascii.hidden {
+  display: none;
+}
+
+@media (min-width: 600px) {
+  .secret-ascii {
+    font-size: 5px;
+  }
+}
+
 .secret-link {
   padding: var(--px-1) var(--px-3);
   background: var(--color-ocean-deep);
